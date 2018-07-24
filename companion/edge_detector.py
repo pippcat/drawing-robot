@@ -9,33 +9,30 @@ from skimage import feature
 from skimage import io
 from skimage import color
 
-# read the image
-filename = os.getcwd() + '/images/dude.jpg'
-im = io.imread(filename)
+def edge_detector(filename, sigma):
 
-# image is colored, lets make it gray scale
-im = color.rgb2gray(im)
+    # read the image
+    filepath = os.getcwd() + '/images/' + filename
+    im = io.imread(filepath)
 
-# Compute the Canny filter for two values of sigma
-edges1 = feature.canny(im)
-edges2 = feature.canny(im, sigma=3)
+    # image is colored, lets make it gray scale
+    im = color.rgb2gray(im)
 
-# display results
-fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(8, 3),
-                                            sharex=True, sharey=True)
+    # Compute the Canny filter for two values of sigma
+    edges = feature.canny(im, sigma=sigma)
 
-ax1.imshow(im, cmap=plt.cm.gray)
-ax1.axis('off')
-ax1.set_title('noisy image', fontsize=20)
+    # display results
+    fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(8, 3),
+                                                sharex=True, sharey=True)
 
-ax2.imshow(edges1, cmap=plt.cm.gray)
-ax2.axis('off')
-ax2.set_title('Canny filter, $\sigma=1$', fontsize=20)
+    ax1.imshow(im, cmap=plt.cm.gray)
+    ax1.axis('off')
+    ax1.set_title('source image in grayscale', fontsize=20)
 
-ax3.imshow(edges2, cmap=plt.cm.gray)
-ax3.axis('off')
-ax3.set_title('Canny filter, $\sigma=3$', fontsize=20)
+    ax2.imshow(edges, cmap=plt.cm.gray)
+    ax2.axis('off')
+    ax2.set_title('Canny filter, $\sigma=$' + str(sigma), fontsize=20)
 
-fig.tight_layout()
+    fig.tight_layout()
 
-plt.show()
+    plt.show()
