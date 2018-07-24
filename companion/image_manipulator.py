@@ -68,3 +68,6 @@ def resize_image(source, size):
         res = transform.resize(source, (width, height))
         return res
 
+def save_file(filename, data):
+    plt.imsave(filename + '.png', data, cmap = plt.cm.gray)
+

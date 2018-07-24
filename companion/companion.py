@@ -10,5 +10,6 @@ im = image_manipulator.open_image(imagename)
 res = image_manipulator.resize_image(im, 800)
 edge = image_manipulator.edge_detector(res)
 inv = image_manipulator.inverter(edge)
+image_manipulator.save_file('out', inv)
 image_manipulator.show_results(im, res, edge, inv)
 
