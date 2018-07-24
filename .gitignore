@@ -1,0 +1,4 @@
+/companion/images/*
+!/companion/images/.gitkeep
+/companion/__pycache__/
+*.swp
