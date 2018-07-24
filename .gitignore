@@ -1,0 +1,3 @@
+/companion/images/*
+/companion/__pycache__/
+*.swp
