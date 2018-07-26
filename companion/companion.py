@@ -18,6 +18,6 @@ def process_image():
 
 def draw_simulation():
     scenery = drawing_simulator.setup_scenery()
-    drawing_simulator.dummy(scenery['angleLabel'], scenery['innerArm'], scenery['outerArm'], scenery['innerLength'],scenery['outerLength'])
+    drawing_simulator.dummy(scenery['alphaLabel'], scenery['betaLabel'], scenery['innerArm'], scenery['outerArm'], scenery['innerLength'],scenery['outerLength'])
 
 draw_simulation()
