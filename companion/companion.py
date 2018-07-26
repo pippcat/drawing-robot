@@ -15,9 +15,12 @@ def process_image():
     inv = image_manipulator.inverter(edge)
     image_manipulator.save_file('out', inv)
     image_manipulator.show_results(im, res, edge, inv)
+    image = image_manipulator.image_as_array('out.png', 0.9)
+    return image
 
-def draw_simulation():
+def draw_simulation(image):
     scenery = drawing_simulator.setup_scenery()
-    drawing_simulator.dummy(scenery['alphaLabel'], scenery['betaLabel'], scenery['innerArm'], scenery['outerArm'], scenery['innerLength'],scenery['outerLength'])
+    drawing_simulator.dummy(scenery['alphaLabel'], scenery['betaLabel'], scenery['innerArm'], scenery['outerArm'], scenery['innerLength'],scenery['outerLength'], image)
 
-draw_simulation()
+image = process_image()
+draw_simulation(image)

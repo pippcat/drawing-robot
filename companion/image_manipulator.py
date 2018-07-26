@@ -69,5 +69,15 @@ def resize_image(source, size):
         return res
 
 def save_file(filename, data):
-    plt.imsave(filename + '.png', data, cmap = plt.cm.gray)
+    plt.imsave(os.getcwd() + '/images/' + filename + '.png', data, cmap = plt.cm.gray)
+
+def image_as_array(filename, threshold):
+    image = io.imread(os.getcwd() + '/images/' + filename, as_gray=True)
+    for ix in range(image.shape[0]):
+        for iy in range(image.shape[1]):
+            if image[ix,iy] < threshold:
+                image[ix,iy] = 0
+            else:
+                image[ix,iy] = 1
+    return image
 
