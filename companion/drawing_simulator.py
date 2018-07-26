@@ -90,8 +90,8 @@ def find_pixel(image):
     return False,False
 
 def find_adjacent_pixel(image,ix,iy):
-    for ax in range(ix-1,ix+1,1):
-        for ay in range(iy-1,ix+1,1):
+    for ay in range(iy-1,ix+1,1):
+        for ax in range(ix-1,ix+1,1):
             print("ix: "+str(ix)+", iy: "+str(iy)+", ax: "+str(ax)+", ay: "+str(ay)+", image: "+str(image[ax,ay]))
             if image[ax,ay] < 0.5:
                 image[ax,ay] = 1
@@ -110,17 +110,18 @@ def draw_image(alphaLabel,betaLabel,innerArm,outerArm,innerLength,outerLength,im
                     drive_arms(alpha,beta,ix,iy,innerArm,outerArm,innerLength,outerLength,alphaLabel,betaLabel,image_scale,image_shift_x)
                     c = curve(vector(ix/image_scale - image_shift_x,iy/image_scale,1))
                     ax,ay = find_adjacent_pixel(image,ix,iy)
+                    print('ax: ' + str(ax)+ '; ay: ' + str(ay))
                     while (ax and ay):
                         c.append(vector(ax/image_scale - image_shift_x,ay/image_scale,1))
-                        alpha, beta = getangles(ix/image_scale-image_shift_x,iy/image_scale)
-                        ax,ay = find_adjacent_pixel(image,ax,ay)
+                        alpha, beta = getangles(ax/image_scale-image_shift_x,ay/image_scale)
                         if alpha != 0 and beta != 0:
                             drive_arms(alpha,beta,ax,ay,innerArm,outerArm,innerLength,outerLength,alphaLabel,betaLabel,image_scale,image_shift_x)
+                        ax,ay = find_adjacent_pixel(image,ax,ay)
         else:
             print("Nothing left to draw!")
             return
         print("ix: " + str(ix) + ", iy: " + str(iy) + ", ax: " + str(ax) + ", ay: " + str(ay) + ", alpha: " + str(alpha) + ", beta: " + str(beta))
-        time.sleep(0.1)
+        time.sleep(0.3)
     
 def drive_arms(alpha, beta,x,y,innerArm,outerArm,innerLength,outerLength,alphaLabel,betaLabel,image_scale,image_shift_x):
     #box(pos=vector(x/image_scale-image_shift_x,y/image_scale,1), length=1, height=1, width=1, color=color.cyan)
