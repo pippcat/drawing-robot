@@ -25,7 +25,7 @@ def draw_line(axis,position,linecolor):
     if axis == "x":
         return curve(vector(position)-vector(0,100,0), vector(position)+vector(0,100,0), radius=0.5, color=linecolor)
 
-def setup_scenery():
+def setup_scenery(image):
     scene = canvas(title='Drawing robot simulation', width=1600, height=900) 
     
     #Create virtual environment:
@@ -46,7 +46,13 @@ def setup_scenery():
             draw_line('x',vector(i,100,0),color.white)
         else:
             draw_line('x',vector(i,100,0),color.gray(0.2))
-    return {'alphaLabel':alphaLabel, 'betaLabel':betaLabel, 'innerArm':innerArm, 'outerArm':outerArm, 'innerLength':innerLength, 'outerLength':outerLength}
+    image_scale = image.shape[0]/(innerArmLength+outerArmLength)
+    image_shift_x = (image.shape[0]/image_scale)/2
+    for ix in range(image.shape[0]):
+        for iy in range(image.shape[1]):
+            if image[ix,iy] < 0.5:
+                box(pos=vector((ix/image_scale-image_shift_x),iy/image_scale,0.1), length=1, height=1, width=1, color=color.green)
+    return {'alphaLabel':alphaLabel, 'betaLabel':betaLabel, 'innerArm':innerArm, 'outerArm':outerArm, 'innerLength':innerLength, 'outerLength':outerLength, 'image':image, 'image_scale':image_scale, 'image_shift_x':image_shift_x}
 
 l1 = innerArmLength #Length of link 1
 l2 = outerArmLength #length of link 2
@@ -74,23 +80,55 @@ def getangles(x, y):
         print("not possible, will return (0,0)")
         return 0,0
 
-def dummy(alphaLabel,betaLabel,innerArm,outerArm,innerLength,outerLength,image):# dummy function
+def find_pixel(image):
     for ix in range(image.shape[0]):
         for iy in range(image.shape[1]):
+            #print("ix: " + str(ix) + ", iy: " + str(iy) + ", image[ix,iy]: " + str(image[ix,iy]))           
             if image[ix,iy] < 0.5:
-                box(pos=vector((ix/4-100),iy/4,0.1), length=1, height=1, width=1, color=color.green)
+                image[ix,iy] = 1
+                return ix,iy
+    return False,False
+
+def find_adjacent_pixel(image,ix,iy):
+    for ax in range(ix-1,ix+1,1):
+        for ay in range(iy-1,ix+1,1):
+            print("ix: "+str(ix)+", iy: "+str(iy)+", ax: "+str(ax)+", ay: "+str(ay)+", image: "+str(image[ax,ay]))
+            if image[ax,ay] < 0.5:
+                image[ax,ay] = 1
+                return ax,ay
+    return False,False
+
+def draw_image(alphaLabel,betaLabel,innerArm,outerArm,innerLength,outerLength,image,image_scale,image_shift_x):# dummy function
+    ax=ix=ay=ix=False
+    alpha=beta=0
     while (1==1):
         rate(20) #refresh rate required for VPython
-        posx = int(input('x coordinate? '))
-        posy = int(input('y coordinate? '))
-        alpha, beta = getangles(posx,posy)
-        box(pos=vector(posx,posy,0), length=1, height=1, width=1, color=color.green)
-        innerArm.axis = innerLength # reset arm to 0 deg
-        innerArm.axis = rotate(innerArm.axis, angle=alpha, axis=(vector(0,0,1))) # rotate it using alpha
-        outerArm.pos=(innerPos + innerArm.axis) # calculate starting point of second arm
-        outerArm.axis = innerArm.axis # set orientation equal to first arm
-        outerArm.length = outerArmLength # reset length of arm
-        outerArm.axis = rotate(outerArm.axis, angle=beta, axis=(vector(0,0,1))) # rotate it
-        alphaLabel.text = "First servo angle is: " + str(np.rad2deg(alpha))
-        betaLabel.text = "Second servo angle is: " + str(np.rad2deg(beta))
-        
+        ix,iy = find_pixel(image)
+        if ix and iy:
+                alpha, beta = getangles(ix/image_scale-image_shift_x,iy/image_scale)
+                if alpha != 0 and beta != 0:
+                    drive_arms(alpha,beta,ix,iy,innerArm,outerArm,innerLength,outerLength,alphaLabel,betaLabel,image_scale,image_shift_x)
+                    c = curve(vector(ix/image_scale - image_shift_x,iy/image_scale,1))
+                    ax,ay = find_adjacent_pixel(image,ix,iy)
+                    while (ax and ay):
+                        c.append(vector(ax/image_scale - image_shift_x,ay/image_scale,1))
+                        alpha, beta = getangles(ix/image_scale-image_shift_x,iy/image_scale)
+                        ax,ay = find_adjacent_pixel(image,ax,ay)
+                        if alpha != 0 and beta != 0:
+                            drive_arms(alpha,beta,ax,ay,innerArm,outerArm,innerLength,outerLength,alphaLabel,betaLabel,image_scale,image_shift_x)
+        else:
+            print("Nothing left to draw!")
+            return
+        print("ix: " + str(ix) + ", iy: " + str(iy) + ", ax: " + str(ax) + ", ay: " + str(ay) + ", alpha: " + str(alpha) + ", beta: " + str(beta))
+        time.sleep(0.1)
+    
+def drive_arms(alpha, beta,x,y,innerArm,outerArm,innerLength,outerLength,alphaLabel,betaLabel,image_scale,image_shift_x):
+    #box(pos=vector(x/image_scale-image_shift_x,y/image_scale,1), length=1, height=1, width=1, color=color.cyan)
+    innerArm.axis = innerLength # reset arm to 0 deg
+    innerArm.axis = rotate(innerArm.axis, angle=alpha, axis=(vector(0,0,1))) # rotate it using alpha
+    outerArm.pos=(innerPos + innerArm.axis) # calculate starting point of second arm
+    outerArm.axis = innerArm.axis # set orientation equal to first arm
+    outerArm.length = outerArmLength # reset length of arm
+    outerArm.axis = rotate(outerArm.axis, angle=beta, axis=(vector(0,0,1))) # rotate it
+    alphaLabel.text = "First servo angle is: " + str(np.rad2deg(alpha))
+    betaLabel.text = "Second servo angle is: " + str(np.rad2deg(beta))
