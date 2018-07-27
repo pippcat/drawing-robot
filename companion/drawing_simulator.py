@@ -122,13 +122,14 @@ def draw_image(alphaLabel,betaLabel,innerArmLabel,outerArmLabel,innerArm,outerAr
                 if alpha != 0 and beta != 0:
                     drive_arms(alpha,beta,ix,iy,innerArm,outerArm,innerLength,outerLength,alphaLabel,betaLabel,innerArmLabel,outerArmLabel,image_scale)
                     c = curve(vector(ix/image_scale+origin['x'],iy/image_scale+origin['y'],1), color=color.magenta, radius=0.5)
+                    c.append(vector(ix/image_scale+origin['x'],iy/image_scale+origin['y'],1))
                     ax,ay = find_adjacent_pixel(image,ix,iy)
                     #print('### ax: ' + str(ax)+ '; ay: ' + str(ay))
                     while (ax and ay):
-                        c.append(vector(ax/image_scale+origin['x'],ay/image_scale+origin['y'],1))
                         alpha, beta = getangles(ax/image_scale+origin['x'],ay/image_scale+origin['y'])
                         if alpha != 0 and beta != 0:
                             drive_arms(alpha,beta,ax,ay,innerArm,outerArm,innerLength,outerLength,alphaLabel,betaLabel,innerArmLabel,outerArmLabel,image_scale)
+                            c.append(vector(ax/image_scale+origin['x'],ay/image_scale+origin['y'],1))
                         ax,ay = find_adjacent_pixel(image,ax,ay)
                         #print('###### ax: ' + str(ax)+ '; ay: ' + str(ay))
         else:
