@@ -81,7 +81,7 @@ def image_as_array(filename, threshold):
                 image[ix,iy] = 1
     print("x: " + str(image.shape[0]) + ", y: " + str(image.shape[1]))
     if image.shape[0] < image.shape[1]:
-        image = np.rot270(image)
+        image = np.rot90(np.rot90(np.rot90(image)))
     print("x: " + str(image.shape[0]) + ", y: " + str(image.shape[1]))
     return image
 

@@ -14,7 +14,7 @@ from skimage.io import imread
 innerArmLength = 100
 outerArmLength = 80
 ArmLength = innerArmLength + outerArmLength
-origin = {'x':ArmLength/6,'y':ArmLength/6} # origin of robot with respect to (0/0)
+origin = {'x':ArmLength/8,'y':ArmLength/6} # origin of robot with respect to (0/0)
 innerPos = vector(0,0,0) # origin of inner arm
 innerLength = vector(innerArmLength,0,0) # length of inner arm
 outerPos = innerPos + innerLength # origin of outer arm
@@ -27,7 +27,7 @@ def draw_line(axis,position,linecolor,gridX,gridY): # draws grid for orientation
         return curve(vector(position), vector(position)+vector(0,gridY,0), radius=0.5, color=linecolor)
 
 def setup_scenery(image):
-    image_scale = 1.5*image.shape[0]/(ArmLength)
+    image_scale = 1.6*image.shape[0]/(ArmLength)
     gridX = image.shape[0]/image_scale+origin['x']
     gridY = image.shape[1]/image_scale+origin['y']
     scene = canvas(title='Drawing robot simulation', width=1600, height=900, center=vector(gridX/2,ArmLength/6,0), forward=(vector(0,0,-1)), range=gridX)
