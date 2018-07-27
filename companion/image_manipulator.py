@@ -28,13 +28,12 @@ def edge_detector(imagename):
 #   edges = feature.canny(im, sigma=2)
     return edges
 
-def inverter(imagename):
-    inv = util.invert(imagename)
+def inverter(imagename): # invert image
+    inv = util.invert(imagename) 
     return inv
 
-def show_results(source, resize, edge, inv):
+def show_results(source, resize, edge, inv): # display results
     print("Drawing images.")
-    # display results
     fig, axes = plt.subplots(nrows=2, ncols=2)
 
     ax = axes.ravel()
@@ -68,10 +67,10 @@ def resize_image(source, size):
         res = transform.resize(source, (width, height))
         return res
 
-def save_file(filename, data):
+def save_file(filename, data): # saves result as filename.png in images subfolder
     plt.imsave(os.getcwd() + '/images/' + filename + '.png', data, cmap = plt.cm.gray)
 
-def image_as_array(filename, threshold):
+def image_as_array(filename, threshold): # stores image as binary array, threshold can be set
     image = io.imread(os.getcwd() + '/images/' + filename, as_gray=True)
     for ix in range(image.shape[0]):
         for iy in range(image.shape[1]):
@@ -80,7 +79,7 @@ def image_as_array(filename, threshold):
             else:
                 image[ix,iy] = 1
     print("x: " + str(image.shape[0]) + ", y: " + str(image.shape[1]))
-    if image.shape[0] < image.shape[1]:
+    if image.shape[0] < image.shape[1]: # rotate image if height > width
         image = np.rot90(np.rot90(np.rot90(image)))
     print("x: " + str(image.shape[0]) + ", y: " + str(image.shape[1]))
     return image
