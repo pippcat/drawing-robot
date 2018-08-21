@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 
+# reads images and does all the magic to generate an input file for the robot
+
 import os
 import numpy as np
 import matplotlib.pyplot as plt

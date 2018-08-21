@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 
+# a drawing robot simulator, runs in your browser
+
 import serial
 import time
 import struct
@@ -22,14 +24,14 @@ outerLength = vector(outerArmLength,0,0) # length of outer arm
 
 def draw_line(axis,position,linecolor,gridX,gridY): # draws grid for orientation
     if axis == "x":
-        return curve(vector(position), vector(position)+vector(gridX,0,0), radius=0.5, color=linecolor)
+        return curve(vector(position), vector(position)+vector(gridX,0,0), radius=0.3, color=linecolor)
     if axis == "y":
-        return curve(vector(position), vector(position)+vector(0,gridY,0), radius=0.5, color=linecolor)
+        return curve(vector(position), vector(position)+vector(0,gridY,0), radius=0.3, color=linecolor)
 
 def setup_scenery(image):
     image_scale = 1.6*image.shape[0]/(ArmLength)
-    gridX = image.shape[0]/image_scale+origin['x']
-    gridY = image.shape[1]/image_scale+origin['y']
+    gridX = image.shape[0]/image_scale#+origin['x']
+    gridY = image.shape[1]/image_scale#+origin['y']
     scene = canvas(title='Drawing robot simulation', width=1600, height=900, center=vector(gridX/2,ArmLength/6,0), forward=(vector(0,0,-1)), range=gridX)
     #Create virtual environment:
     #first we create the arrows which represent the arms:
@@ -43,24 +45,22 @@ def setup_scenery(image):
     innerArmLabel = label(text='(0/0)', pos=(vector(0,0,0)), height=15, box=False, color=color.blue)
     outerArmLabel = label(text='('+ str(outerArm.pos.x) + '/'+ str(outerArm.pos.y)+ ')', pos=outerArm.pos, height=15, box=False, color=color.red)
     maxRange = ring(pos=vector(0,0,0), axis=vector(0,0,1), radius=ArmLength, thickness=1, color=color.cyan)
-    for i in range(0,int(gridY + gridY / 50), int(gridY / 50)): # drawing y grid lines
-        if i%50 == 0:
-            draw_line('x',vector(0,i,0),color.white,gridX,gridY) # every 50th line is white
+    for i in range(int(origin['y']),int(gridY + gridY / 50 + origin['y']), int(gridY / 50)): # drawing y grid lines
+        if (i==int(origin['y'])) or (i%int(gridY)==0): # first and every 50th line is white
+            draw_line('x',vector(int(origin['x']),i,0),color.white,gridX,gridY) 
+        else: # the others are gray
+            draw_line('x',vector(int(origin['x']),i,0),color.gray(0.2),gridX,gridY) 
+    for i in range(int(origin['x']),int(gridX + gridX / 50 + origin['x']),int(gridX / 50)): # drawing x grid lines
+        if (i==int(origin['x'])) or (i%int(gridX) == 0):
+            draw_line('y',vector(i,int(origin['y']),0),color.white,gridX,gridY)
         else:
-            draw_line('x',vector(0,i,0),color.gray(0.2),gridX,gridY) # the others are gray
-    for i in range(0,int(gridX + gridX / 50),int(gridX / 50)): # drawing x grid lines
-        if i%50 == 0:
-            draw_line('y',vector(i,0,0),color.white,gridX,gridY)
-        else:
-            draw_line('y',vector(i,0,0),color.gray(0.2),gridX,gridY)
-    #image_scale = image.shape[0]/(innerArmLength+outerArmLength)
-    #image_shift_x = (image.shape[0]/image_scale)/2
-#    image_shift_x = image.shape[0]/image_scale/2
-    for ix in range(image.shape[0]):
+            draw_line('y',vector(i,int(origin['y']),0),color.gray(0.2),gridX,gridY)
+    for ix in range(image.shape[0]): # drawing the background image using a small box for every pixel
         for iy in range(image.shape[1]):
             if image[ix,iy] < 0.5:
                 box(pos=vector(ix/image_scale+origin['x'],iy/image_scale+origin['y'],0.1), length=1, height=1, width=1, color=color.green)
-    return {'alphaLabel':alphaLabel, 'betaLabel':betaLabel, 'innerArmLabel':innerArmLabel,'outerArmLabel':outerArmLabel,'innerArm':innerArm, 'outerArm':outerArm, 'innerLength':innerLength, 'outerLength':outerLength, 'image':image, 'image_scale':image_scale}
+    return {'alphaLabel':alphaLabel, 'betaLabel':betaLabel, 'innerArmLabel':innerArmLabel,'outerArmLabel':outerArmLabel,
+            'innerArm':innerArm, 'outerArm':outerArm, 'innerLength':innerLength, 'outerLength':outerLength, 'image':image, 'image_scale':image_scale}
 
 l1 = innerArmLength #Length of link 1
 l2 = outerArmLength #length of link 2

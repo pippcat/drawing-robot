@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 
+# drawing robot companion app, can modify images and run the simulator
+
 import image_manipulator
 import drawing_simulator
 import numpy as np

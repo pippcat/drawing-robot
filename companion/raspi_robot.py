@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 
+# the drawing robot, implemented for a RaspberryPi
+
 import RPi.GPIO as GPIO
 from time import sleep
 
