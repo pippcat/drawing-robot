@@ -76,7 +76,7 @@ def imageAsArray(filename, threshold): # stores image as binary array, threshold
     image = io.imread(os.getcwd() + '/images/' + filename, as_gray=True)
     for ix in range(image.shape[0]):
         for iy in range(image.shape[1]):
-            if image[ix,iy] < threshold:
+            if np.all(image[ix,iy]) < threshold:
                 image[ix,iy] = 0
             else:
                 image[ix,iy] = 1
