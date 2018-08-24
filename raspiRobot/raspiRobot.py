@@ -9,7 +9,7 @@ from time import sleep
 ### set up hardware
 innerArmPin = 17
 outerArmPin = 27
-penPin = 22
+penMotorPin = 22
 GPIO.setmode(GPIO.BCM)
 # inner arm
 GPIO.setup(innerArmPin, GPIO.OUT) # we want it as output
@@ -19,14 +19,14 @@ innerArm.start(0) # do nothing
 GPIO.setup(outerArmPin, GPIO.OUT) # we want it as output
 outerArm = GPIO.PWM(outerArmPin, 50) # GPIO 17 as PWM with 50Hz
 outerArm.start(0) # do nothing
-# pen
-GPIO.setup(penPin, GPIO.OUT) # we want it as output
-pen = GPIO.PWM(penPin, 50) # GPIO 17 as PWM with 50Hz
-pen.start(0) # do nothing
+# penMotor
+GPIO.setup(penMotorPin, GPIO.OUT) # we want it as output
+penMotor = GPIO.PWM(penMotorPin, 50) # GPIO 17 as PWM with 50Hz
+penMotor.start(0) # do nothing
 
 ### function to set an arm to an angle:
 def setAngle(angle, arm):
-    duty = angle / 18 + 2 # some calculation depending on your servo, see https://www.instructables.com/id/Servo-Motor-Control-With-Raspberry-Pi/
+    duty = angle / 18 + 2 # some calculation depenMotording on your servo, see https://www.instructables.com/id/Servo-Motor-Control-With-Raspberry-Pi/
     if arm == "innerArm":
         moveArm = innerArm
         moveArmPin = innerArmPin
@@ -39,15 +39,21 @@ def setAngle(angle, arm):
     GPIO.output(moveArmPin, False)
     moveArm.ChangeDutyCycle(0)
 
-### function to move pen up and down:
+### function to move penMotor up and down:
 def movePen(direction):
-    GPIO.output(penPin, True)
-    duty = 50 # check values!
+    GPIO.output(penMotorPin, True)
+    upAngle = 50 # check values!
+    downAngle = 100
     if direction == "down":
-        pen.ChangeDutyCycle(-duty)
+        print("down")
+        duty = downAngle / 18 + 2
+        penMotor.ChangeDutyCycle(duty)
     if direction == "up":
-        pen.ChangeDutyCycle(duty)
+        duty = upAngle / 18 + 2
+        penMotor.ChangeDutyCycle(duty)
     sleep(1) # check how small it could be!
+    GPIO.output(penMotorPin, False)
+    penMotor.ChangeDutyCycle(0)
 
 def drawImage(innerLength,outerLength,origin,image,image_scale):
     ax=ix=ay=ix=False
@@ -77,7 +83,7 @@ def drawImage(innerLength,outerLength,origin,image,image_scale):
                 print("Nothing left to draw!")
                 innerArm.stop()
                 outerArm.stop()
-                pen.stop()
+                penMotor.stop()
                 GPIO.cleanup()
                 print("Finished GPIO cleanup")
                 return
@@ -86,15 +92,19 @@ def drawImage(innerLength,outerLength,origin,image,image_scale):
         print("Drawing was interrupted!")
         innerArm.stop()
         outerArm.stop()
-        pen.stop()
+        penMotor.stop()
         GPIO.cleanup()
         print("Finished GPIO cleanup")
 
 try:
     while True:
-        pen = input("move pen up or down?")
+        pen = input("move penMotor up or down? ")
         movePen(pen)
 
-except KeyboardInterrupt:
-    p.stop()
-GPIO.cleanup()
+except:
+    print("Exception, tidying up GPIO")
+    innerArm.stop()
+    outerArm.stop()
+    penMotor.stop()
+    GPIO.cleanup()
+    print("Finished")
