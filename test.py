@@ -26,4 +26,14 @@ def drawImage(image):
     print("drawing image")
     raspiRobot.raspiRobot.drawImage(innerArmLength,outerArmLength,origin,image,image_scale)
 
-drawImage(image)
+try:
+    while True:
+        angle = input("Angle?: ")
+        arm = input("innerArm, outerArm or pen")
+        setAngle(int(angle),arm)
+
+except KeyboardInterrupt:
+    p.stop()
+GPIO.cleanup()
+
+#drawImage(image)
