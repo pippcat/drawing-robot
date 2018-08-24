@@ -89,3 +89,12 @@ def drawImage(innerLength,outerLength,origin,image,image_scale):
         pen.stop()
         GPIO.cleanup()
         print("Finished GPIO cleanup")
+
+try:
+    while True:
+        pen = input("move pen up or down?")
+        movePen(pen)
+
+except KeyboardInterrupt:
+    p.stop()
+GPIO.cleanup()
