@@ -27,7 +27,7 @@ def draw_simulation(image):
     scenery = drawing_simulator.setup_scenery(image) # drawing the scenery
     drawing_simulator.draw_image(scenery['alphaLabel'], scenery['betaLabel'], scenery['innerArmLabel'], scenery['outerArmLabel'],scenery['innerArm'], scenery['outerArm'], scenery['innerLength'],scenery['outerLength'],scenery['image'], scenery['image_scale']) # draw the image
 
-image = process_image() # either .. 
+image = process_image() # either ..
 #print("skipping image processing") # ..or:
 #image = image_manipulator.image_as_array('out.png', 0.9)
 draw_simulation(image)

@@ -5,8 +5,10 @@
 
 import os
 import numpy as np
+np.set_printoptions(threshold=np.nan)
 import matplotlib.pyplot as plt
 import warnings
+from PIL import Image
 from scipy import ndimage as ndi
 from skimage import feature
 from skimage import io
@@ -73,15 +75,16 @@ def saveFile(filename, data): # saves result as filename.png in images subfolder
     plt.imsave(os.getcwd() + '/images/' + filename + '.png', data, cmap = plt.cm.gray)
 
 def imageAsArray(filename, threshold): # stores image as binary array, threshold can be set
-    image = io.imread(os.getcwd() + '/images/' + filename, as_gray=True)
+    imagefile = Image.open(os.getcwd() + '/images/' + filename).convert("L") # open image and convert to grayscale
+    image = np.asarray(imagefile)
+    image.setflags(write=1) # it's read only by default
     for ix in range(image.shape[0]):
         for iy in range(image.shape[1]):
-            if np.all(image[ix,iy]) < threshold:
+            if image[ix,iy] < threshold*255: # treshold 0 .. 1 , array 0 .. 255
                 image[ix,iy] = 0
             else:
                 image[ix,iy] = 1
-    print("x: " + str(image.shape[0]) + ", y: " + str(image.shape[1]))
     if image.shape[0] < image.shape[1]: # rotate image if height > width
         image = np.rot90(np.rot90(np.rot90(image)))
-    print("x: " + str(image.shape[0]) + ", y: " + str(image.shape[1]))
+    print("made array of size x: " + str(image.shape[0]) + ", y: " + str(image.shape[1]))
     return image
