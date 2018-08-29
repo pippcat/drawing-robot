@@ -59,9 +59,9 @@ sizeX = config['simulator'].getint('sizeX')
 sizeY = config['simulator'].getint('sizeY')
 
 ### setting up some meaningful dictionaries:
-arms = {'innerArmLength':innerArmLength, 'innerArmAngle':0, 'innerArmCHannel':innerArmChannel,
+arms = {'innerArmLength':innerArmLength, 'innerArmAngleRad':0, 'innerArmAngleDeg':0, 'innerArmCHannel':innerArmChannel,
             'innerArmActuationRange':innerArmActuationRange, 'innerArmMinPulse':innerArmMinPulse,
-       'outerArmLength':outerArmLength, 'outerAngle':0, 'outerArmCHannel':outerArmChannel,
+       'outerArmLength':outerArmLength, 'outerArmAngleRad':0, 'innerArmAngleDeg':0, 'outerArmCHannel':outerArmChannel,
             'outerArmActuationRange':outerArmActuationRange, 'outerArmMinPulse':outerArmMinPulse,
        'penUpAngle':penUpAngle, 'penDownAngle':penDownAngle,'penChannel':penChannel,
        'armLength': innerArmLength + outerArmLength}
@@ -106,11 +106,50 @@ def infoRaspi():
 image['array'] = imageProcessor.imageProcessor.imageAsArray(image['outputFilename'], image['treshold'])
 image['width'] = image['array'].shape[0]/image['scale']
 image['height'] = image['array'].shape[1]/image['scale']
+image['currentXInArray'] = image['currentYInArray'] = False
 
 ### setting up the browser window
 header = header()
 tab1 = settingsTab()
-tab2 = simulator.newsimulator.setupSimulation(simulation, image, arms)
+tab2, simulation['innerArmDataStream'], simulation['outerArmDataStream'], simulation['figure'] = simulator.newsimulator.setupSimulation(simulation, image, arms)
 tab3 = infoRaspi()
 tabs = Tabs(tabs = [tab2, tab1, tab3])
 curdoc().add_root(column(children=[header, tabs], sizing_mode='scale_width'))
+
+
+### drawing process starts here:
+image['currentXInArray'], image['currentYInArray'] = helper.findPixel(image['array'])
+print('currentXYInArray:',image['currentXInArray'], image ['currentYInArray'])
+if image['currentXInArray']:
+    image['currentX'] = image['currentXInArray']/image['scale']+image['originX']
+    image['currentY'] = image['currentYInArray']/image['scale']+image['originY']
+    print('currentXY:',image['currentX'],image['currentY'])
+    image['currentLineX'] = [image['currentX']]
+    image['currentLineY'] = [image['currentY']]
+    arms['innerArmAngleRad'], arms['outerArmAngleRad'], arms['innerArmAngleDeg'], arms['outerArmAngleDeg'] = helper.getAngles(image['currentX'], image['currentY'], arms['innerArmLength'], arms['outerArmLength'])
+    print('inner and outer angle:',arms['innerArmAngleDeg'], arms['outerArmAngleDeg'])
+    if arms['innerArmAngleDeg'] != 0 and arms['outerArmAngleDeg'] != 0:
+        simulator.newsimulator.moveArms(arms, simulation)
+        simulator.newsimulator.drawLine(arms, simulation)
+        ax, ay = helper.findAdjacentPixel(image['array'],image['currentXInArray'],image['currentYInArray'])
+        image['currentX'] = ax/image['scale']+image['originX']
+        image['currentY'] = ay/image['scale']+image['originY']
+        while (image['currentX'] and image['currentY']):
+            arms['innerArmAngleRad'], arms['outerArmAngleRad'], arms['innerArmAngleDeg'], arms['outerArmAngleDeg'] = helper.getAngles(image['currentX'], image['currentY'], arms['innerArmLength'], arms['outerArmLength'])
+            print('inner and outer angle:',arms['innerArmAngleDeg'], arms['outerArmAngleDeg'])
+            if arms['innerArmAngleDeg'] != 0 and arms['outerArmAngleDeg'] != 0:
+                image['currentLineX'].append(image['currentX'])
+                image['currentLineY'].append(image['currentY'])
+            ax, ay = helper.findAdjacentPixel(image['array'],ax,ay)
+            image['currentX'] = ax/image['scale']+image['originX']
+            image['currentY'] = ay/image['scale']+image['originY']
+            print('ax,ay:',ax,ay)
+            print('currentLine:',image['currentLineX'],image['currentLineY'])
+    else:
+        print("Nothing left to draw!")
+
+
+### testing area
+arms['innerArmAngle'] = 70
+arms['outerArmAngle'] = 20
+simulator.newsimulator.moveArms(arms, simulation)

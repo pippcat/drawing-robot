@@ -33,8 +33,8 @@ def getAngles(x, y, innerArmLength, outerArmLength):
 
 ### finds the first pixel of the next line:
 def findPixel(image):
-    for ix in range(image.shape[0]-1, 1, 1):
-        for iy in range(image.shape[1]-1, 1, 1):
+    for ix in range(image.shape[0]-2, 1, -1):
+        for iy in range(image.shape[1]-2, 1, -1):
             #print("ix: " + str(ix) + ", iy: " + str(iy) + ", image(ix,iy): " + str(image[ix,iy]))
             if image[ix,iy] < 0.5:
                 image[ix,iy] = 1

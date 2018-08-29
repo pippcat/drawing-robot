@@ -5,7 +5,6 @@
 
 import bokeh.plotting as bp
 import numpy as np
-import math
 from random import random
 from bokeh.client import push_session
 from bokeh.io import curdoc
@@ -38,7 +37,18 @@ def setupSimulation(simulator, image, arms):
     #button = Button(label="Press me")
     #tab = Panel(child = column(button,sim), title = "Simulator")
     tab = Panel(child = sim, title = "Simulator")
-    return tab
+    return tab, iads, oads, sim
+
+def moveArms(arms, simulation):
+    simulation['innerArmDataStream'].data['a'] = [arms['innerArmAngleRad']]
+    simulation['outerArmDataStream'].data['a'] = [arms['innerArmAngleRad']-np.pi+arms['outerArmAngleRad']]
+    simulation['outerArmDataStream'].data['x'] = [arms['innerArmLength']*np.cos(arms['innerArmAngleRad'])]
+    simulation['outerArmDataStream'].data['y'] = [arms['innerArmLength']*np.sin(arms['innerArmAngleRad'])]
+    #print(simulation['outerArmDataStream'].data['x'],simulation['outerArmDataStream'].data['y'],simulation['innerArmDataStream'].data['a'],simulation['outerArmDataStream'].data['a'])
+
+def drawLine(arms, simulation):
+    #simulation['figure'].line
+    print("draw line")
 
 
 
