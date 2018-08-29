@@ -15,15 +15,24 @@ from bokeh.models.glyphs import Ray
 from bokeh.layouts import column
 #import matplotlib.pyplot as pyplot
 
-def setupSimulation(browser, sizeX, sizeY, innerArmLength, outerArmLength, originX, originY, imageScale):
-    originOuterX = originOuterY = 60
-    endX = endY = 15
-    iads = ColumnDataSource(dict(x=[originX], y=[originY], l=[innerArmLength], a=[math.radians(90)]))
+def setupSimulation(simulator, image, arms):
+    iads = ColumnDataSource(dict(x=[0], y=[0], l=[arms['innerArmLength']], a=[0], n=["innerArm"], c=["midnightblue"], w=["6"]))
+    oads = ColumnDataSource(dict(x=[arms['innerArmLength']], y=[0], l=[arms['outerArmLength']],
+                                 a=[0], n=["outerArm"], c=["dodgerblue"], w=["6"]))
     #sim = bp.figure(title="Drawing Robot Simulator", width=sizeX, height=sizeY)
-    sim = bp.figure(title="Drawing Robot Simulator", width=sizeX, height=sizeY)
-    innerArm = Ray(x="x", y="y", angle="a", length="l", line_width=3, line_color="navy") # add a line for inner arm without data
-
+    sim = bp.figure(width=simulator['sizeX'], height=simulator['sizeY'],
+                    x_range=(0,arms['armLength']),
+                    y_range=(0,arms['armLength']))
+    innerArm = Ray(x="x", y="y", angle="a", length="l", name="n", line_width="w", line_color="c") # add a line for inner arm without data
+    outerArm = Ray(x="x", y="y", angle="a", length="l", name="n", line_width="w", line_color="c") # add a line for outer arm without data
     sim.add_glyph(iads, innerArm)
+    sim.add_glyph(oads, innerArm)
+    imageFrameX = [image['originX'],image['originX']+image['width'],image['originX']+image['width'],image['originX'],image['originX']]
+    imageFrameY = [image['originY'],image['originY'],image['originY']+image['height'],image['originY']+image['height'],image['originY']]
+    sim.line(imageFrameX, imageFrameY, line_width=3, color="deeppink")
+    sim.circle(0,0,line_color="deeppink",line_width=3,radius=arms['armLength'],fill_color="deeppink",fill_alpha=0.1)
+    sim.image(image=[image['array']], x=[image['originX']], y=[image['originY']],
+              dw=[image['array'].shape[0]/image['scale']], dh=[image['array'].shape[1]/image['scale']], global_alpha=0.3)
     #innerArm = sim.line([originX, originOuterX], [originY, originOuterY], name = "innerArm", line_width = 2, color="navy")
     #sim.line([originOuterX, endX], [originOuterY, endY], name = "outerArm", line_width = 2, color="red")
     #button = Button(label="Press me")
