@@ -101,10 +101,11 @@ def findPixel2(image):
                 image['foundNextPixel'] = True
                 image['currentXInArray'] = ix
                 image['currentYInArray'] = iy
+                image['currentX'] = image['currentXInArray']/image['scale']+image['originX']
+                image['currentY'] = image['currentYInArray']/image['scale']+image['originY']
                 print('ix, iy, arrayIXIY:', image['currentXInArray'], image['currentYInArray'], image['array'][ix,iy])
                 return
-    image['foundNextPixel'] = False
-    print('222ix, iy, arrayIXIY:', ix, iy, image['array'][ix,iy])
+    image['foundLastPixel'] = True
     return
 
 ### finds the next pixel in a line:
@@ -116,6 +117,8 @@ def findAdjacentPixel2(image):
             image['foundNextPixel'] = True
             image['currentXInArray'] = ax
             image['currentYInArray'] = ay
+            image['currentX'] = image['currentXInArray']/image['scale']+image['originX']
+            image['currentY'] = image['currentYInArray']/image['scale']+image['originY']
             return
         for ax in range(image['currentXInArray']+1,image['currentXInArray']-2,-1):
             if image['array'][ax,ay] < 0.5:
@@ -123,6 +126,8 @@ def findAdjacentPixel2(image):
                 image['foundNextPixel'] = True
                 image['currentXInArray'] = ax
                 image['currentYInArray'] = ay
+                image['currentX'] = image['currentXInArray']/image['scale']+image['originX']
+                image['currentY'] = image['currentYInArray']/image['scale']+image['originY']
                 return
     for ay in range(image['currentYInArray']-1,image['currentYInArray']+2,1):
         if image['array'][ax,ay] < 0.5:
@@ -130,6 +135,8 @@ def findAdjacentPixel2(image):
             image['foundNextPixel'] = True
             image['currentXInArray'] = ax
             image['currentYInArray'] = ay
+            image['currentX'] = image['currentXInArray']/image['scale']+image['originX']
+            image['currentY'] = image['currentYInArray']/image['scale']+image['originY']
             return
     image['foundNextPixel'] = False
     return

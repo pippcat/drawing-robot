@@ -15,6 +15,7 @@ from bokeh.io import curdoc
 from bokeh.models import Panel, Button
 from bokeh.models.widgets import Tabs, Div, TextInput
 from bokeh.layouts import column, row, WidgetBox
+from time import sleep
 # own stuff:
 import helper
 import imageProcessor.imageProcessor
@@ -69,9 +70,9 @@ arms = {'innerArmLength':innerArmLength, 'innerArmAngleRad':0, 'innerArmAngleDeg
        'penUpAngle':penUpAngle, 'penDownAngle':penDownAngle,'penChannel':penChannel,
        'armLength': innerArmLength + outerArmLength}
 
-image = {'inputFilename':"", 'outputFilename':outputFilename,
+image = {'inputFilename':"", 'outputFilename':outputFilename, 'treshold':treshold,
          'originX':originX, 'originY':originY, 'edgeAlgorithm':edgeAlgorithm,
-         'treshold':treshold,'skipProcessing':skipProcessing, 'foundNextPixel':False}
+         'skipProcessing':skipProcessing, 'foundNextPixel':True, 'foundLastPixel':False}
 
 raspi = {'switchedOn':raspiSwitchedOn, 'frequency':frequency, 'waitTimeNear':waitTimeNear, 'waitTimeNew':waitTimeNew, 'waitTimePen':waitTimePen}
 
@@ -106,49 +107,46 @@ def infoRaspi():
     return tabRaspi
 
 ### drawing functions
-def draw(image, arms, raspi):
-    while True:
-        image['foundNextPixel'] = False
-        helper.findPixel2(image)
-        #print('currentXYInArray:',image['currentXInArray'], image ['currentYInArray'])
-        if image['foundNextPixel']:
-            image['currentX'] = image['currentXInArray']/image['scale']+image['originX']
-            image['currentY'] = image['currentYInArray']/image['scale']+image['originY']
-            image['currentLineX'] = [image['currentX']]
-            image['currentLineY'] = [image['currentY']]
-            helper.getAngles2(image, arms)
-            #print('currentXYInArray:',image['currentXInArray'],image['currentYInArray'],'currentXY:',image['currentX'],image['currentY'])
-            if arms['innerArmAngleDeg'] != 0 and arms['outerArmAngleDeg'] != 0:
-                if simulation['switchedOn']:
-                    simulator.newsimulator.moveArms(arms, simulation)
-                    #simulator.newsimulator.drawLine(arms, simulation, image)
-                if raspi['switchedOn']:
-                    print('raspi should draw here!')
-                helper.findAdjacentPixel2(image)
-                while image['foundNextPixel']:
-                    image['currentX'] = image['currentXInArray']/image['scale']+image['originX']
-                    image['currentY'] = image['currentYInArray']/image['scale']+image['originY']
-                    helper.getAngles2(image, arms)
-                    if arms['innerArmAngleDeg'] != 0 and arms['outerArmAngleDeg'] != 0:
+def drawLine(image, arms, raspi):
+    #image['foundNextPixel'] = False
+    helper.findPixel2(image)
+    #print('currentXYInArray:',image['currentXInArray'], image ['currentYInArray'])
+    if image['foundNextPixel']:
+        image['currentLineX'] = [image['currentX']]
+        image['currentLineY'] = [image['currentY']]
+        helper.getAngles2(image, arms)
+        #print('currentXYInArray:',image['currentXInArray'],image['currentYInArray'],'currentXY:',image['currentX'],image['currentY'])
+        if arms['innerArmAngleDeg'] != 0 and arms['outerArmAngleDeg'] != 0:
+            if simulation['switchedOn']:
+                simulator.newsimulator.moveArms(arms, simulation)
+                #simulator.newsimulator.drawLine(arms, simulation, image)
+            if raspi['switchedOn']:
+                print('raspi should draw here!')
+            helper.findAdjacentPixel2(image)
+            while image['foundNextPixel']:
+                #sleep(0.1)
+                helper.getAngles2(image, arms)
+                if arms['innerArmAngleDeg'] != 0 and arms['outerArmAngleDeg'] != 0:
+                    if simulation['switchedOn']:
                         image['currentLineX'].append(image['currentX'])
                         image['currentLineY'].append(image['currentY'])
-                        if simulation['switchedOn']:
-                            simulator.newsimulator.moveArms(arms, simulation)
-                            #
-                        if raspi['switchedOn']:
-                            print('raspi should draw here!')
-                        helper.findAdjacentPixel2(image)
-                        image['currentX'] = image['currentXInArray']/image['scale']+image['originX']
-                        image['currentY'] = image['currentYInArray']/image['scale']+image['originY']
-                simulator.newsimulator.drawLine(arms, simulation, image)
+                        simulator.newsimulator.moveArms(arms, simulation)
+                        #simulator.newsimulator.drawLine(arms, simulation, image)
+                    if raspi['switchedOn']:
+                        print('raspi should draw here!')
+                    helper.findAdjacentPixel2(image)
+            simulator.newsimulator.drawLine(arms, simulation, image)
+            #sleep(0.5)
+    else:
+        # hurray, we finished drawing
+        print("nothing left to draw!")
+        # delete variables in dictionary:
+        image['currentX'] = image['currentY'] = image['currentXInArray'] = image['currentYInArray'] = False
+        image['currentLineX'] = image['currentLineY'] = []
+        return
 
-        else:
-            # hurray, we finished drawing
-            print("nothing left to draw!")
-            # delete variables in dictionary:
-            image['currentX'] = image['currentY'] = image['currentXInArray'] = image['currentYInArray'] = False
-            image['currentLineX'] = image['currentLineY'] = []
-            return
+def update():
+    drawLine(image, arms, raspi)
 
 
 ### populating image dictionary:
@@ -167,8 +165,10 @@ tab3 = infoRaspi()
 tabs = Tabs(tabs = [tab2, tab1, tab3])
 curdoc().add_root(column(children=[header, tabs], sizing_mode='scale_width'))
 
+curdoc().add_periodic_callback(update, 30)
 ### drawing process starts here:
-draw(image, arms, raspi)
+# while not image['foundLastPixel']:
+#     drawLine(image, arms, raspi)
 #print('arms:',arms)
 #print('image:',image)
 #print('simulation:',simulation)
