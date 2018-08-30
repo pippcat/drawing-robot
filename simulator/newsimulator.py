@@ -14,14 +14,14 @@ from bokeh.models.glyphs import Ray
 from bokeh.layouts import column
 #import matplotlib.pyplot as pyplot
 
-def setupSimulation(simulator, image, arms):
+def setupSimulation(simulation, image, arms):
     iads = ColumnDataSource(dict(x=[0], y=[0], l=[arms['innerArmLength']], a=[0], n=["innerArm"], c=["midnightblue"], w=["6"]))
     oads = ColumnDataSource(dict(x=[arms['innerArmLength']], y=[0], l=[arms['outerArmLength']],
                                  a=[0], n=["outerArm"], c=["dodgerblue"], w=["6"]))
     #sim = bp.figure(title="Drawing Robot Simulator", width=sizeX, height=sizeY)
-    sim = bp.figure(width=simulator['sizeX'], height=simulator['sizeY'],
-                    x_range=(0,arms['armLength']),
-                    y_range=(0,arms['armLength']))
+    sim = bp.figure(width=simulation['sizeX'], height=simulation['sizeY'],
+                    x_range=(-0.25*arms['armLength'],arms['armLength']),
+                    y_range=(0,1.25*arms['armLength']))
     innerArm = Ray(x="x", y="y", angle="a", length="l", name="n", line_width="w", line_color="c") # add a line for inner arm without data
     outerArm = Ray(x="x", y="y", angle="a", length="l", name="n", line_width="w", line_color="c") # add a line for outer arm without data
     sim.add_glyph(iads, innerArm)
@@ -37,18 +37,27 @@ def setupSimulation(simulator, image, arms):
     #button = Button(label="Press me")
     #tab = Panel(child = column(button,sim), title = "Simulator")
     tab = Panel(child = sim, title = "Simulator")
-    return tab, iads, oads, sim
+    simulation['innerArmDataStream'] = iads
+    simulation['outerArmDataStream'] = oads
+    simulation['figure'] = sim
+    return tab
 
 def moveArms(arms, simulation):
-    simulation['innerArmDataStream'].data['a'] = [arms['innerArmAngleRad']]
-    simulation['outerArmDataStream'].data['a'] = [arms['innerArmAngleRad']-np.pi+arms['outerArmAngleRad']]
-    simulation['outerArmDataStream'].data['x'] = [arms['innerArmLength']*np.cos(arms['innerArmAngleRad'])]
-    simulation['outerArmDataStream'].data['y'] = [arms['innerArmLength']*np.sin(arms['innerArmAngleRad'])]
+    newInner = simulation['innerArmDataStream'].data
+    newOuter = simulation['outerArmDataStream'].data
+    newInner['a'] = [arms['innerArmAngleRad']]
+    newOuter['a'] = [arms['innerArmAngleRad']-np.pi+arms['outerArmAngleRad']]
+    newOuter['x'] = [arms['innerArmLength']*np.cos(arms['innerArmAngleRad'])]
+    newOuter['y'] = [arms['innerArmLength']*np.sin(arms['innerArmAngleRad'])]
+    simulation['innerArmDataStream'].data = newInner
+    simulation['outerArmDataStream'].data = newOuter
     #print(simulation['outerArmDataStream'].data['x'],simulation['outerArmDataStream'].data['y'],simulation['innerArmDataStream'].data['a'],simulation['outerArmDataStream'].data['a'])
 
-def drawLine(arms, simulation):
+def drawLine(arms, simulation, image):
     #simulation['figure'].line
-    print("draw line")
+    #print("draw line")
+    print('currentLineXY:',image['currentLineX'],image['currentLineY'])
+    simulation['figure'].line(image['currentLineX'],image['currentLineY'],line_width=simulation['penWidth'],color="black")
 
 
 
