@@ -3,103 +3,117 @@
 
 # the drawing robot, implemented for a RaspberryPi
 
-import RPi.GPIO as GPIO
+from __future__ import division
+import time
+import board
+import busio
+import adafruit_pca9685
+import adafruit_motor.servo
 import traceback
 import helper
 import math
-from time import sleep
 
-### set up hardware
-innerArmPin = 17
-outerArmPin = 27
-penMotorPin = 22
+i2c = busio.I2C(board.SCL, board.SDA)
+pca = adafruit_pca9685.PCA9685(i2c)
 
-GPIO.setmode(GPIO.BCM)
-# inner arm
-GPIO.setup(innerArmPin, GPIO.OUT) # we want it as output
-innerArm = GPIO.PWM(innerArmPin, 50) # GPIO 17 as PWM with 50Hz
-innerArm.start(0) # do nothing
-# outer arm
-GPIO.setup(outerArmPin, GPIO.OUT) # we want it as output
-outerArm = GPIO.PWM(outerArmPin, 50) # GPIO 17 as PWM with 50Hz
-outerArm.start(0) # do nothing
-# penMotor
-GPIO.setup(penMotorPin, GPIO.OUT) # we want it as output
-penMotor = GPIO.PWM(penMotorPin, 50) # GPIO 17 as PWM with 50Hz
-penMotor.start(0) # do nothing
+innerArmChannel = pca.channels[arms['innerArmChannel']]
+outerArmChannel = pca.channels[arms['outerArmChannel']]
+penMotorChannel = pca.channels[arms['penMotorChannel']]
+pca.frequency = arms['frequency']
+
+innerArm = adafruit_motor.servo.Servo(innerArmChannel, actuation_range=arms['innerArmActuationRange'],
+        min_pulse=arms['innerArmMinPulse'], max_pulse=arms['innerArmMaxPulse'])
+outerArm = adafruit_motor.servo.Servo(outerArmChannel, actuation_range=arms['iouterArmActuationRange'],
+        min_pulse=arms['innerArmMinPulse'], max_pulse=arms['innerArmMaxPulse'])
+penMotor = adafruit_motor.servo.Servo(penMotorChannel)
+
 
 ### function to set an arm to an angle:
-def setAngle(innerAngle, outerAngle, pixel):
-    innerDuty = innerAngle / 36 + 5 # some calculation depending on your servo, see https://www.instructables.com/id/Servo-Motor-Control-With-Raspberry-Pi/
-    outerDuty = outerAngle / 36 + 5 # some calculation depending on your servo, see https://www.instructables.com/id/Servo-Motor-Control-With-Raspberry-Pi/
-    GPIO.output(innerArmPin, True)
-    GPIO.output(outerArmPin, True)
-    innerArm.ChangeDutyCycle(innerDuty)
-    outerArm.ChangeDutyCycle(outerDuty)
-    if pixel == "new":
-        sleep(1) # check how small it could be!
+def setAngle(arms, image):
+    innerArm.angle = 180 - arms['innerArmAngleDeg']
+    outerArm.angle = arms['outerArmAngleDeg']
+    if image['distance'] == "far":
+        time.sleep(raspi['waitTimeNew']) # check how small it could be!
     # we dont have to wait long for new angles found by findAdjacentPixel(), because changes are always very small:
-    if pixel == "near":
-        sleep(0.5) # check how small it could be!
-    GPIO.output(innerArmPin, False)
-    GPIO.output(outerArmPin, False)
-    innerArm.ChangeDutyCycle(0)
-    outerArm.ChangeDutyCycle(0)
+    if image['distance'] == "near":
+        time.sleep(raspi['waitTimeNear']) # check how small it could be!
 
 ### function to move penMotor up and down:
-def movePen(direction):
-    GPIO.output(penMotorPin, True)
-    upAngle = 50 # check values!
-    downAngle = 100
+def movePen(direction, waitTime):
+    upAngle = 80 # check values!
+    downAngle = 110
     if direction == "down":
         print("pen down!")
-        duty = downAngle / 18 + 2
-        penMotor.ChangeDutyCycle(duty)
+        penMotor.angle = downAngle
     if direction == "up":
         print("pen up!")
-        duty = upAngle / 18 + 2
-        penMotor.ChangeDutyCycle(duty)
-    sleep(1) # check how small it could be!
-    GPIO.output(penMotorPin, False)
-    penMotor.ChangeDutyCycle(0)
+        penMotor.angle = upAngle
+    time.sleep(waitTime) # check how small it could be!
+
+def calibrate(motor):
+    if motor == "innerArm":
+        print("Calibrating innerArm")
+        for i in range(0,181,45):
+            print("moving to " + str(i) + " degrees")
+            innerArm.angle = i
+            input("press button to continue!")
+        print("finished, moving to 90 degrees")
+        innerArm.angle = 90
+        time.sleep(1)
+    elif motor == "outerArm":
+        print("Calibrating outerArm")
+        for i in range(0,180,45):
+            print("moving to " + str(i) + " degrees")
+            outerArm.angle = i
+            input("press button to continue!")
+        print("finished, moving to 90 degrees")
+        outerArm.angle = 90
+        time.sleep(1)
+    elif motor == "pen":
+        print("Calibrating penMotor")
+        print("moving pen down")
+        movePen("down")
+        input("press button to continue!")
+        print("moving pen up")
+        movePen("up")
+        input("press button to continue!")
+
+def release():
+    movePen("up")
+    return
 
 def drawImage(innerLength,outerLength,origin,image,image_scale):
     ax=ix=ay=ix=False
-    alpha=beta=0
+    innerAngle=outerAngle=0
     movePen("up")
     try:
         print("drawImage initialisation. innerLength = " + str(innerLength) + ", outerLength = " + str(outerLength) + ", origin = " + str(origin) + ", image_scale = " + str(image_scale))
         while True:
             ix,iy = helper.findPixel(image)
-            if (ix and iy):
-                alpha, beta = helper.getAngles((ix/image_scale+origin['x']),iy/image_scale+origin['y'],innerLength,outerLength)
-                print("### ix: " + str(ix) + ", iy: " + str(iy) + ", innerAngle: "+str(int(math.degrees(alpha)))+"; outerAngle: "+str(int(math.degrees(beta))))
-                if alpha != 0 and beta != 0:
+            print(ix)
+            print(iy)
+            if (ix != False):
+                print("beep")
+                innerAngle, outerAngle, innerAngleDeg, outerAngleDeg = helper.getAngles((ix/image_scale+origin['x']),iy/image_scale+origin['y'],innerLength,outerLength)
+                print("### ix: " + str(ix) + ", iy: " + str(iy) + ", innerAngle: "+str(int(math.degrees(innerAngle)))+"; outerAngle: "+str(int(math.degrees(outerAngle))))
+                if innerAngle != 0 and outerAngle != 0:
+                    setAngle(innerAngleDeg,outerAngleDeg,'new')
                     movePen("down")
-                    setAngle(alpha,beta,'new')
                     ax,ay = helper.findAdjacentPixel(image,ix,iy)
-                    print("### ax: " + str(ax) + ", ay: " + str(ay) + ", innerAngle: "+str(int(math.degrees(alpha)))+"; outerAngle: "+str(int(math.degrees(beta))))
-                    while (ax and ay):
-                        alpha, beta = helper.getAngles(ax/image_scale+origin['x'],ay/image_scale+origin['y'],innerLength,outerLength)
-                        if alpha != 0 and beta != 0:
-                            setAngle(alpha,beta,'near')
+                    print("### ax: " + str(ax) + ", ay: " + str(ay) + ", innerAngle: "+str(int(math.degrees(innerAngle)))+"; outerAngle: "+str(int(math.degrees(outerAngle))))
+                    while (ax != False):
+                        innerAngle, outerAngle, innerAngleDeg, outerAngleDeg = helper.getAngles(ax/image_scale+origin['x'],ay/image_scale+origin['y'],innerLength,outerLength)
+                        if innerAngle != 0 and outerAngle != 0:
+                            setAngle(innerAngleDeg,outerAngleDeg,'near')
                         ax,ay = helper.findAdjacentPixel(image,ax,ay)
-                        print("### ax: " + str(ax) + ", ay: " + str(ay) + ", innerAngle: "+str(int(math.degrees(alpha)))+"; outerAngle: "+str(int(math.degrees(beta))))
+                        print("### ax: " + str(ax) + ", ay: " + str(ay) + ", innerAngle: "+str(int(math.degrees(innerAngle)))+"; outerAngle: "+str(int(math.degrees(outerAngle))))
                 movePen("up")
             else:
                 print("Nothing left to draw!")
-                innerArm.stop()
-                outerArm.stop()
-                penMotor.stop()
-                GPIO.cleanup()
-                print("Finished GPIO cleanup")
+                release()
                 return
-            #print("ix: " + str(ix) + ", iy: " + str(iy) + ", ax: " + str(ax) + ", ay: " + str(ay) + ", alpha: " + str(alpha) + ", beta: " + str(beta))
+            #print("ix: " + str(ix) + ", iy: " + str(iy) + ", ax: " + str(ax) + ", ay: " + str(ay) + ", innerAngle: " + str(innerAngle) + ", outerAngle: " + str(outerAngle))
     except:
         print("Drawing was interrupted!")
+        release()
         traceback.print_exc()
-        innerArm.stop()
-        outerArm.stop()
-        penMotor.stop()
-        GPIO.cleanup()
-        print("Finished GPIO cleanup")

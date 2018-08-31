@@ -76,15 +76,17 @@ def saveFile(filename, data): # saves result as filename.png in images subfolder
 
 def imageAsArray(filename, threshold): # stores image as binary array, threshold can be set
     imagefile = Image.open(os.getcwd() + '/images/' + filename).convert("L") # open image and convert to grayscale
-    image = np.asarray(imagefile)
-    image.setflags(write=1) # it's read only by default
-    for ix in range(image.shape[0]):
-        for iy in range(image.shape[1]):
-            if image[ix,iy] < threshold*255: # treshold 0 .. 1 , array 0 .. 255
-                image[ix,iy] = 0
+    imageAsArray = np.asarray(imagefile)
+    imageAsArray.setflags(write=1) # it's read only by default
+    for ix in range(imageAsArray.shape[0]):
+        for iy in range(imageAsArray.shape[1]):
+            if imageAsArray[ix,iy] < threshold*255: # treshold 0 .. 1 , array 0 .. 255
+                imageAsArray[ix,iy] = 0
             else:
-                image[ix,iy] = 1
-    if image.shape[0] < image.shape[1]: # rotate image if height > width
-        image = np.rot90(np.rot90(np.rot90(image)))
-    print("made array of size x: " + str(image.shape[0]) + ", y: " + str(image.shape[1]))
-    return image
+                imageAsArray[ix,iy] = 1
+    if imageAsArray.shape[0] < imageAsArray.shape[1]: # rotate image if height > width
+        imageAsArray = np.rot90(imageAsArray)
+    # adding a border to the image to circumvent problems with pixel finding algorithm:
+    imageAsArray = np.pad(imageAsArray, pad_width=2, mode='constant', constant_values=1)
+    print("made array of size x: " + str(imageAsArray.shape[0]) + ", y: " + str(imageAsArray.shape[1]))
+    return imageAsArray
