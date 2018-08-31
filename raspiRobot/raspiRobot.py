@@ -33,7 +33,7 @@ def setAngle(arms, image):
     innerArm.angle = 180 - arms['innerArmAngleDeg']
     outerArm.angle = arms['outerArmAngleDeg']
     if image['distance'] == "far":
-        time.sleep(raspi['waitTimeNew']) # check how small it could be!
+        time.sleep(raspi['waitTimeFar']) # check how small it could be!
     # we dont have to wait long for new angles found by findAdjacentPixel(), because changes are always very small:
     if image['distance'] == "near":
         time.sleep(raspi['waitTimeNear']) # check how small it could be!
@@ -77,43 +77,3 @@ def calibrate(motor):
         print("moving pen up")
         movePen("up")
         input("press button to continue!")
-
-def release():
-    movePen("up")
-    return
-
-def drawImage(innerLength,outerLength,origin,image,image_scale):
-    ax=ix=ay=ix=False
-    innerAngle=outerAngle=0
-    movePen("up")
-    try:
-        print("drawImage initialisation. innerLength = " + str(innerLength) + ", outerLength = " + str(outerLength) + ", origin = " + str(origin) + ", image_scale = " + str(image_scale))
-        while True:
-            ix,iy = helper.findPixel(image)
-            print(ix)
-            print(iy)
-            if (ix != False):
-                print("beep")
-                innerAngle, outerAngle, innerAngleDeg, outerAngleDeg = helper.getAngles((ix/image_scale+origin['x']),iy/image_scale+origin['y'],innerLength,outerLength)
-                print("### ix: " + str(ix) + ", iy: " + str(iy) + ", innerAngle: "+str(int(math.degrees(innerAngle)))+"; outerAngle: "+str(int(math.degrees(outerAngle))))
-                if innerAngle != 0 and outerAngle != 0:
-                    setAngle(innerAngleDeg,outerAngleDeg,'new')
-                    movePen("down")
-                    ax,ay = helper.findAdjacentPixel(image,ix,iy)
-                    print("### ax: " + str(ax) + ", ay: " + str(ay) + ", innerAngle: "+str(int(math.degrees(innerAngle)))+"; outerAngle: "+str(int(math.degrees(outerAngle))))
-                    while (ax != False):
-                        innerAngle, outerAngle, innerAngleDeg, outerAngleDeg = helper.getAngles(ax/image_scale+origin['x'],ay/image_scale+origin['y'],innerLength,outerLength)
-                        if innerAngle != 0 and outerAngle != 0:
-                            setAngle(innerAngleDeg,outerAngleDeg,'near')
-                        ax,ay = helper.findAdjacentPixel(image,ax,ay)
-                        print("### ax: " + str(ax) + ", ay: " + str(ay) + ", innerAngle: "+str(int(math.degrees(innerAngle)))+"; outerAngle: "+str(int(math.degrees(outerAngle))))
-                movePen("up")
-            else:
-                print("Nothing left to draw!")
-                release()
-                return
-            #print("ix: " + str(ix) + ", iy: " + str(iy) + ", ax: " + str(ax) + ", ay: " + str(ay) + ", innerAngle: " + str(innerAngle) + ", outerAngle: " + str(outerAngle))
-    except:
-        print("Drawing was interrupted!")
-        release()
-        traceback.print_exc()

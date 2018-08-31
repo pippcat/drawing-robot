@@ -4,7 +4,7 @@
 
 """
 drawing-robot-headless
-invoke with 'bokeh serve drawing-robot-headless' and open in browser (localhost:5006)
+invoke with 'bokeh serve --show drawing-robot-headless' and open in browser (localhost:5006)
 """
 
 ### libraries
@@ -13,14 +13,14 @@ import configparser # for importing config file
 import bokeh.plotting as bp
 from bokeh.io import curdoc
 from bokeh.models import Panel, Button
-from bokeh.models.widgets import Tabs, Div, TextInput
+from bokeh.models.widgets import Tabs, Div, TextInput, MultiSelect
 from bokeh.layouts import column, row, WidgetBox
 from time import sleep
 # own stuff:
-import helper
-import imageProcessor.imageProcessor
-import simulator.newsimulator
-#import raspiRobot.raspiRobot
+from helper import *
+from imageProcessor.imageProcessor import *
+from simulator.simulator import *
+#from raspiRobot.raspiRobot import *
 
 ### reading variables from config file:
 config = configparser.ConfigParser()
@@ -31,7 +31,6 @@ debug = config['general'].getboolean('debug')
 originX = config['general'].getint('originX')
 originY = config['general'].getint('originY')
 imageScaleFactor = config['general'].getint('imageScale')
-print(imageScaleFactor)
 # arms:
 innerArmLength = config['arms'].getint('innerArmLength')
 innerArmChannel = config['arms'].getint('innerArmChannel')
@@ -55,7 +54,7 @@ treshold = config['imageprocessor'].getfloat('treshold')
 raspiSwitchedOn = config['raspi'].getboolean('switchedOn')
 frequency = config['raspi'].getint('frequency')
 waitTimeNear = config['raspi'].getfloat('waitTimeNear')
-waitTimeNew = config['raspi'].getfloat('waitTimeNew')
+waitTimeFar = config['raspi'].getfloat('waitTimeFar')
 waitTimePen = config['raspi'].getfloat('waitTimePen')
 # simulator
 simulatorSwitchedOn = config['simulator'].getboolean('switchedOn')
@@ -68,9 +67,9 @@ animateArms = config['simulator'].getboolean('animateArms')
 
 ### setting up some meaningful dictionaries:
 arms = {'innerArmLength':innerArmLength, 'innerArmAngleRad':0, 'innerArmAngleDeg':0, 'innerArmChannel':innerArmChannel,
-            'innerArmActuationRange':innerArmActuationRange, 'innerArmMinPulse':innerArmMinPulse,
+            'innerArmActuationRange':innerArmActuationRange, 'innerArmMinPulse':innerArmMinPulse, 'innerArmMaxPulse':innerArmMaxPulse,
        'outerArmLength':outerArmLength, 'outerArmAngleRad':0, 'innerArmAngleDeg':0, 'outerArmChannel':outerArmChannel,
-            'outerArmActuationRange':outerArmActuationRange, 'outerArmMinPulse':outerArmMinPulse,
+            'outerArmActuationRange':outerArmActuationRange, 'outerArmMinPulse':outerArmMinPulse, 'outerArmMaxPulse':outerArmMaxPulse,
        'penUpAngle':penUpAngle, 'penDownAngle':penDownAngle,'penChannel':penChannel,
        'armLength': innerArmLength + outerArmLength}
 
@@ -79,70 +78,130 @@ image = {'inputFilename':"", 'outputFilename':outputFilename, 'treshold':treshol
          'lineCounter':0, 'pixelCounter':0, 'currentLineX':[], 'currentLineY':[],
          'skipProcessing':skipProcessing, 'foundNextPixel':True, 'foundLastPixel':False}
 
-raspi = {'switchedOn':raspiSwitchedOn, 'frequency':frequency, 'waitTimeNear':waitTimeNear, 'waitTimeNew':waitTimeNew, 'waitTimePen':waitTimePen}
+raspi = {'switchedOn':raspiSwitchedOn, 'frequency':frequency, 'waitTimeNear':waitTimeNear, 'waitTimeFar':waitTimeFar, 'waitTimePen':waitTimePen}
 
 simulation = {'switchedOn':simulatorSwitchedOn, 'browser':browser, 'sizeX':sizeX, 'sizeY':sizeY,
               'penWidth':penWidth, 'penColor':penColor, 'animateArms':animateArms,'lines':[]}
 
+allback_id = None
+
 ### parts of browser window:
-# header
-def header(): # header
-    header = Div(text="""""")
-    #header = Div(text="""<h1>Drawing Robot</h1>""")
-    return header
 # info tab:
 def settingsTab():
-    header = Div(text="""<h2>Settings</h2></br><h3>General</h3>""")
-    headerSimulator = Div(text="""
-    <h3>Simulator</h3>
-    <h3>RaspberryPi</h3>
-    </br>Insert config file here!""")
+    header = Div(text="""<h2>Settings</h2></br><h3>Robot</h3>""")
+    headerSimulator = Div(text="""<h3>Simulator</h3>""")
+    headerImage = Div(text="""<h3>Image</h3>""")
+
+    # include checkbox for on/off
     settingsInnerArmLength = TextInput(value=str(arms['innerArmLength']), title="Inner arm length:")
-    settingsOuterArmLength = TextInput(value=str(outerArmLength), title="Outer arm length:")
-    settingsOriginX = TextInput(value=str(originX), title="Origin x:")
-    settingsOriginY = TextInput(value=str(originY), title="Origin y:")
+    settingsInnerArmMinPulse= TextInput(value=str(arms['innerArmMinPulse']), title="Inner arm mininum pulse:")
+    settingsInnerArmMaxPulse= TextInput(value=str(arms['innerArmMaxPulse']), title="Inner arm maximum pulse:")
+    settingsInnerArmActuationRange= TextInput(value=str(arms['innerArmActuationRange']), title="Inner arm actuation range:")
+    settingsOuterArmLength = TextInput(value=str(arms['outerArmLength']), title="Outer arm length:")
+    settingsOuterArmMinPulse= TextInput(value=str(arms['outerArmMinPulse']), title="Outer arm mininum pulse:")
+    settingsOuterArmMaxPulse= TextInput(value=str(arms['outerArmMaxPulse']), title="Outer arm maximum pulse:")
+    settingsOuterArmActuationRange= TextInput(value=str(arms['outerArmActuationRange']), title="Outer arm actuation range:")
+    settingsPenUpAngle= TextInput(value=str(arms['penUpAngle']), title="Angle for pen up:")
+    settingsPenDownAngle= TextInput(value=str(arms['penDownAngle']), title="Angle for pen down:")
+    settingsWaitTimeNear= TextInput(value=str(raspi['waitTimeNear']), title="Wait time if next pixel is near:")
+    settingsWaitTimeFar= TextInput(value=str(raspi['waitTimeFar']), title="Wait time if next pixel is far:")
+    settingsWaitTimePen= TextInput(value=str(raspi['waitTimePen']), title="Wait time after pen movement:")
+
     settingsImageScale = TextInput(value=str(imageScaleFactor), title="Image scale:")
-    info = column(header, row(settingsInnerArmLength, settingsOuterArmLength), row(settingsOriginX, settingsOriginY), settingsImageScale, headerSimulator)
+    settingsUpdate = Button(label='Update settings', width=200)
+    settingsUpdateConfig = Button(label='Update settings and write to config', width=200)
+    settingsReadConfig = Button(label='Read settings from config', width=200)
+
+    settingsOutputFilename = TextInput(value=str(image['outputFilename']), title="Filename of output file:")
+    settingsInputFilename = TextInput(value=str(image['inputFilename']), title="Filename of input file:")
+    settingsTreshold = TextInput(value=str(image['treshold']), title="Threshold for conversion to black and white image:")
+    settingsOriginX = TextInput(value=str(image['originX']), title="Origin x:")
+    settingsOriginY = TextInput(value=str(image['originY']), title="Origin y:")
+    settingsEdgeAlgorithm = MultiSelect(value=[str(image['edgeAlgorithm'])], title="Edgde detection algorithm:",
+                                        options=['scharr','frangi','canny'])
+
+    #include checkbox for on/off
+    settingsBrowser = TextInput(value=str(simulation['browser']), title="Browser used:")
+    settingsPenWidth = TextInput(value=str(simulation['penWidth']), title="Width of pen:")
+    settingsPenColor = TextInput(value=str(simulation['penColor']), title="Color of pen:")
+    settingsSizeX = TextInput(value=str(simulation['sizeX']), title="Width of simulation window:")
+    settingsSizeY = TextInput(value=str(simulation['sizeY']), title="Height of simulation window:")
+    #include checkbox for animate arms
+    #button.on_click(startButton)
+    info = column(header,
+                  row(settingsInnerArmLength, settingsInnerArmActuationRange),
+                  row(settingsInnerArmMinPulse, settingsInnerArmMaxPulse),
+                  row(settingsOuterArmLength, settingsOuterArmActuationRange),
+                  row(settingsOuterArmMinPulse, settingsOuterArmMaxPulse),
+                  row(settingsPenUpAngle, settingsPenDownAngle),
+                  row(settingsWaitTimeNear, settingsWaitTimeFar),
+                  settingsWaitTimePen,
+                  headerImage,
+                  row(settingsInputFilename, settingsOutputFilename),
+                  row(settingsOriginX, settingsOriginY),
+                  row(settingsEdgeAlgorithm,settingsTreshold),
+                  headerSimulator,
+                  row(settingsSizeX,settingsSizeY),
+                  row(settingsPenWidth,settingsPenColor),
+                  settingsBrowser,
+                  row(settingsReadConfig,settingsUpdate,settingsUpdateConfig))
     #show(widgetbox(div))
     settings = Panel(child = info, title = "Settings")
     return settings
+
+# Image manipulation tab1
+def imageTab():
+    info = Div(text="""insert image manipulation magic here!""")
+    tabImage = Panel(child = info, title = "Image processing")
+    return tabImage
+
 # RasPi tab
-def infoRaspi():
-    info = Div(text="""Here some information about the Raspi will be displayed""")
-    tabRaspi = Panel(child = info, title = "RaspberryPi Info")
+def loggingTab():
+    info = Div(text="""Here some logging information will be displayed""")
+    tabRaspi = Panel(child = info, title = "Logging informations")
     return tabRaspi
+
+### what to do if start button is clicked:
+def startButton():
+    global callback_id
+    if button.label == '► Start':
+        button.label = '❚❚ Stop'
+        callback_id = curdoc().add_periodic_callback(update, 200)
+    else:
+        button.label = '► Play'
+        curdoc().remove_periodic_callback(callback_id)
 
 ### drawing function
 def drawLine(image, arms, raspi):
-    helper.findPixel(image) # looking for the first pixel in image, sets image['foundNextPixel']
+    findPixel(image) # looking for the first pixel in image, sets image['foundNextPixel']
     if image['foundNextPixel']:
         image['lineCounter'] += 1 # linecounter +1
-        helper.getAngles(image, arms) # calculate angles of robot arms
+        getAngles(image, arms) # calculate angles of robot arms
         if arms['innerArmAngleDeg'] != 0 and arms['outerArmAngleDeg'] != 0:
             if simulation['switchedOn']:
-                simulator.newsimulator.newLine(simulation, image)
+                newLine(simulation, image)
                 if simulation['animateArms']:
-                    simulator.newsimulator.moveArms(arms, simulation)
+                    moveArms(arms, simulation)
             if raspi['switchedOn']:
                 image['distance'] = "far"
                 raspiRobot.raspiRobot.setAngle(arms,image)
                 raspiRobot.raspiRobot.movePen(down, raspi['waitTimePen'])
-            helper.findAdjacentPixel(image)
+            findAdjacentPixel(image)
             if (not image['foundNextPixel']) and simulation['switchedOn']:
-                simulator.newsimulator.drawPixel(simulation, image)
+                drawPixel(simulation, image)
             while image['foundNextPixel']:
-                helper.getAngles(image, arms)
+                getAngles(image, arms)
                 if arms['innerArmAngleDeg'] != 0 and arms['outerArmAngleDeg'] != 0:
                     if simulation['switchedOn']:
                         image['currentLineX'].append(image['currentX'])
                         image['currentLineY'].append(image['currentY'])
                         if simulation['animateArms']:
-                            simulator.newsimulator.moveArms(arms, simulation)
-                        simulator.newsimulator.appendLine(simulation, image)
+                            moveArms(arms, simulation)
+                        appendLine(simulation, image)
                     if raspi['switchedOn']:
                         image['distance'] = "near"
                         raspiRobot.raspiRobot.setAngle(arms,image)
-                    helper.findAdjacentPixel(image)
+                    findAdjacentPixel(image)
     else:
         # hurray, we finished drawing
         print('Done drawing ', image['pixelCounter'], ' pixel in ', image['lineCounter'], 'lines.')
@@ -162,21 +221,25 @@ def test():
     update()
 
 ### populating image dictionary:
-image['array'] = imageProcessor.imageProcessor.imageAsArray(image['outputFilename'], image['treshold'])
+image['array'] = imageAsArray(image['outputFilename'], image['treshold'])
 image['scale'] = float(imageScaleFactor) * float(image['array'].shape[0]) / float(arms['armLength'])
 image['width'] = image['array'].shape[0]/image['scale']
 image['height'] = image['array'].shape[1]/image['scale']
 image['currentXInArray'] = image['currentYInArray'] = False
 
+### behaviour of start button:
+button = Button(label='► Start', width=60)
+button.on_click(startButton)
 
 ### setting up the browser window
-header = header()
-tab1 = settingsTab()
-tab2 = simulator.newsimulator.setupSimulation(simulation, image, arms)
-tab3 = infoRaspi()
-tabs = Tabs(tabs = [tab2, tab1, tab3])
-curdoc().add_root(column(children=[header, tabs], sizing_mode='scale_width', name='mainLayout'))
+tab1 = imageTab()
+tab2 = settingsTab()
+tab3 = setupSimulation(simulation, image, arms)
+tab4 = loggingTab()
+tabs = Tabs(tabs = [tab2, tab1, tab3, tab4])
+curdoc().add_root(column(children=[button, tabs], sizing_mode='scale_width', name='mainLayout'))
+#curdoc().add_root(column(children=[header, tabs], sizing_mode='scale_width', name='mainLayout'))
 ### drawing process starts here:
-curdoc().add_periodic_callback(update, 1000)
+#curdoc().add_periodic_callback(update, 1000)
 
 #test()

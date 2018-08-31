@@ -41,16 +41,12 @@ def setupSimulation(simulation, image, arms):
 def moveArms(arms, simulation):
     newInner = simulation['innerArmDataStream'].data
     newOuter = simulation['outerArmDataStream'].data
-    #print('before:',newInner,newOuter)
     newInner['a'] = [arms['innerArmAngleRad']]
     newOuter['a'] = [arms['innerArmAngleRad']-np.pi+arms['outerArmAngleRad']]
     newOuter['x'] = [arms['innerArmLength']*np.cos(arms['innerArmAngleRad'])]
     newOuter['y'] = [arms['innerArmLength']*np.sin(arms['innerArmAngleRad'])]
-    #print(arms['innerArmAngleRad'],arms['innerArmAngleDeg'])
-    #print('after:',newInner,newOuter)
     simulation['innerArmDataStream'].data = newInner
     simulation['outerArmDataStream'].data = newOuter
-    #print(simulation['outerArmDataStream'].data['x'],simulation['outerArmDataStream'].data['y'],simulation['innerArmDataStream'].data['a'],simulation['outerArmDataStream'].data['a'])
 
 def newLine(simulation, image):
     ds = ColumnDataSource(dict(x=[image['currentX']], y=[image['currentY']]))

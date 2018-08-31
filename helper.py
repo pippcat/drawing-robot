@@ -45,7 +45,6 @@ def findPixel(image):
                 image['currentYInArray'] = iy
                 image['currentX'] = image['currentXInArray']/image['scale']+image['originX']
                 image['currentY'] = image['currentYInArray']/image['scale']+image['originY']
-                print('ix, iy, arrayIXIY:', image['currentXInArray'], image['currentYInArray'], image['array'][ix,iy])
                 return
     image['foundLastPixel'] = True
     return
