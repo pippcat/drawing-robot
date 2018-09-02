@@ -19,17 +19,22 @@ from skimage import util
 
 def openImage(filename):
     # read the image
-    filepath = os.getcwd() + '/images/' + filename
+    filepath = 'drawing-robot/static/' + filename
     print("Loading image " + filepath)
     im = io.imread(filepath)
+    if im.shape[0] < im.shape[1]: # rotate image if height > width
+        im = np.rot90(im)
     return im
 
-def edgeDetector(imagename):
+def edgeDetector(imagename, algorithm):
     im = color.rgb2gray(imagename)  # image is colored, lets make it gray scale
-    # edge detection happening here:
-#   edges = filters.frangi(im)
-    edges = filters.scharr(im)
-#   edges = feature.canny(im, sigma=2)
+    print('algorithm',algorithm)
+    if algorithm == "frangi":
+        edges = filters.frangi(im)
+    elif algorithm == "scharr":
+        edges = filters.scharr(im)
+    elif algorithm == "canny":
+        edges = feature.canny(im, sigma=2)
     return edges
 
 def inverter(imagename): # invert image
@@ -37,7 +42,6 @@ def inverter(imagename): # invert image
     return inv
 
 def showResults(source, resize, edge, inv): # display results
-    print("Drawing images.")
     fig, axes = plt.subplots(nrows=2, ncols=2)
 
     ax = axes.ravel()
@@ -72,10 +76,10 @@ def resizeImage(source, size):
         return res
 
 def saveFile(filename, data): # saves result as filename.png in images subfolder
-    plt.imsave(os.getcwd() + '/images/' + filename + '.png', data, cmap = plt.cm.gray)
+    plt.imsave('drawing-robot/static/' + filename, data, cmap = plt.cm.gray)
 
 def imageAsArray(filename, threshold): # stores image as binary array, threshold can be set
-    imagefile = Image.open(os.getcwd() + '/images/' + filename).convert("L") # open image and convert to grayscale
+    imagefile = Image.open('drawing-robot/static/' + filename).convert("L") # open image and convert to grayscale
     imageAsArray = np.asarray(imagefile)
     imageAsArray.setflags(write=1) # it's read only by default
     for ix in range(imageAsArray.shape[0]):

@@ -30,7 +30,7 @@ def setupSimulation(simulation, image, arms):
     imageFrameY = [image['originY'],image['originY'],image['originY']+image['height'],image['originY']+image['height'],image['originY']]
     sim.line(imageFrameX, imageFrameY, line_width=3, color="deeppink")
     sim.circle(0,0,line_color="deeppink",line_width=3,radius=arms['armLength'],fill_color="deeppink",fill_alpha=0.1)
-    sim.image(image=[np.rot90(np.fliplr(image['array']))], x=image['originX'], y=image['originY'],
+    sim.image(image=[np.rot90(np.fliplr(image['array']))], x=image['originX']-0.5, y=image['originY']-0.5,
               dw=image['width'], dh=image['height'], global_alpha=0.3)
     tab = Panel(child = sim, title = "Simulator")
     simulation['innerArmDataStream'] = iads
@@ -50,9 +50,9 @@ def moveArms(arms, simulation):
 
 def newLine(simulation, image):
     ds = ColumnDataSource(dict(x=[image['currentX']], y=[image['currentY']]))
-    newMultiLine = Line(x="x", y="y", line_width=simulation['penWidth'], line_color=simulation['penColor'])
+    newLine = Line(x="x", y="y", line_width=simulation['penWidth'], line_color=simulation['penColor'])
     simulation['lines'].append(ds)
-    simulation['figure'].add_glyph(ds, newMultiLine)
+    simulation['figure'].add_glyph(ds, newLine)
 
 def appendLine(simulation, image):
     newDS = simulation['lines'][-1].data
@@ -62,4 +62,4 @@ def appendLine(simulation, image):
 
 def drawPixel(simulation, image):
     simulation['figure'].rect(x=[image['currentX']], y=[image['currentY']],
-        width=0.5*simulation['penWidth'], height=0.5*simulation['penWidth'], color=simulation['penColor'])
+        width=.5, height=.5, line_width=0.25*simulation['penWidth'], color=simulation['penColor'])
