@@ -1,3 +1,4 @@
+
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
@@ -8,6 +9,8 @@ invoke with 'bokeh serve --show drawing-robot-headless' and open in browser (loc
 
 ### libraries
 # external
+import string
+from random import choice
 import pandas as pd
 from bokeh.models import ColumnDataSource, CustomJS
 import configparser # for importing config file
@@ -25,7 +28,7 @@ from imageProcessor.imageProcessor import *
 from simulator.simulator import *
 #from raspiRobot.raspiRobot import *
 
-import StringIO
+from io import BytesIO
 import base64
 import os
 import shutil
@@ -120,12 +123,11 @@ def settingsTab():
 
 # Image manipulation tab1
 def file_callback(attr,old,new):
-    print 'filename:', file_source.data['file_name']
     raw_contents = file_source.data['file_contents'][0]
     # remove the prefix that JS adds
     prefix, b64_contents = raw_contents.split(",", 1)
     file_contents = base64.b64decode(b64_contents)
-    file_io = StringIO.StringIO(file_contents)
+    file_io = BytesIO(file_contents)
     filepath = 'drawing-robot/static/' + file_source.data['file_name'][-1]
     print(filepath)
     settingsInputFilename.update(value=file_source.data['file_name'][-1])
@@ -177,11 +179,11 @@ def imageTab():
                 settingsOutputSize,
                 row(settingsEdgeAlgorithm,settingsTreshold),
                 row(processImageButton,refreshButton),
+                showImageResult,
                 showImageOrig,
                 showImageResize,
                 showImageEdge,
-                showImageInv,
-                showImageResult,)
+                showImageInv)
     tabImage = Panel(child = imageTabElements, title = "Image processing", name = "imagetab")
     processImageButton.on_event(ButtonClick, processImage)
     refreshButton.on_event(ButtonClick, refreshImage)
@@ -202,33 +204,37 @@ def refreshImage(event):
     #     w=simulation['sizeX'],
     #     source=img_orig)
 
+def randomChar(y):
+    return ''.join(choice(string.ascii_letters) for x in range(y))
+
 def processImage(event):
     image['inputFilename'] = settingsInputFilename.value
     image['outputSize'] = int(settingsOutputSize.value)
     image['edgeAlgorithm'] = settingsEdgeAlgorithm.value[-1] # value is a list containing one item
     image['treshold'] = float(settingsTreshold.value)
     #save settings before!
+    #imagename = randomChar(8)
+    imagename = image['inputFilename']
+    print('Image name on hard disk:',imagename)
     im = openImage(image['inputFilename']) # open image
-    saveFile('out_orig.png', im)
+    saveFile(imagename + '_orig.png', im)
     res = resizeImage(im,image['outputSize']) # resize it
-    saveFile('out_scaledown.png', res)
+    saveFile(imagename + '_scaledown.png', res)
     edge = edgeDetector(res, str(image['edgeAlgorithm'])) # detect edges
-    saveFile('out_edge.png', edge)
+    saveFile(imagename + '_edge.png', edge)
     inv = inverter(edge) # invert result
-    saveFile('out_inv', inv) # save file
-    result = imageAsArray('out_inv.png', image['treshold']) # store as array
-    saveFile('out_result.png', result)
-    img_orig = ColumnDataSource(dict(url = ['drawing-robot/images/in.jpg']))
-    showImageOrig.image_url(url='url', x=0, y=500,
-        h=simulation['sizeX'],
-        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
-        source=img_orig)
-    img_orig = ColumnDataSource(dict(url = ['drawing-robot/static/out.png']))
-    img_scaledown = ColumnDataSource(dict(url = ['drawing-robot/static/out_scaledown.png']))
-    img_edge = ColumnDataSource(dict(url = ['drawing-robot/static/out_edge.png']))
-    img_inv = ColumnDataSource(dict(url = ['drawing-robot/static/out_inv.png']))
-    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/out_result.png']))
-    img_orig.data.update(dict(url = ['drawing-robot/static/out_orig.png']))
+    saveFile(imagename + '_inv.png', inv) # save file
+    print(type(inv))
+    result = imageAsArray(imagename + '_inv.png', image['treshold']) # store as array
+    image['array'] = result
+    print(type(result))
+    saveFile(imagename + '_result.png', result)
+    img_orig = ColumnDataSource(dict(url = ['drawing-robot/static/' + imagename + '_orig.png']))
+    img_scaledown = ColumnDataSource(dict(url = ['drawing-robot/static/' + imagename + '_scaledown.png']))
+    img_edge = ColumnDataSource(dict(url = ['drawing-robot/static/' + imagename + '_edge.png']))
+    img_inv = ColumnDataSource(dict(url = ['drawing-robot/static/' + imagename + '_inv.png']))
+    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' + imagename + '_result.png']))
+    img_orig.data.update(dict(url = ['drawing-robot/static/' + imagename + '_orig.png']))
     showImageOrig.image_url(url='url', x=0, y=500,
         h=simulation['sizeX'],
         w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
@@ -249,6 +255,9 @@ def processImage(event):
         h=simulation['sizeX'],
         w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
         source=img_result)
+    print('resetup simulation')
+    setupSimulation(simulation, image, arms)
+    print('done')
 
 # RasPi tab
 def loggingTab():
@@ -259,11 +268,11 @@ def loggingTab():
 ### what to do if start button is clicked:
 def startButton():
     global callback_id
-    if button.label == '► Start':
-        button.label = '❚❚ Stop'
+    if button.label == 'Start':
+        button.label = 'Stop'
         callback_id = curdoc().add_periodic_callback(update, 200)
     else:
-        button.label = '► Play'
+        button.label = 'Play'
         curdoc().remove_periodic_callback(callback_id)
 
 ### drawing function
@@ -325,7 +334,7 @@ image['height'] = image['array'].shape[1]/image['scale']
 image['currentXInArray'] = image['currentYInArray'] = False
 
 ### behaviour of start button:
-button = Button(label='► Start', width=60)
+button = Button(label='Start', width=60)
 button.on_click(startButton)
 
 ### UI elements

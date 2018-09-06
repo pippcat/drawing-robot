@@ -9,6 +9,7 @@ np.set_printoptions(threshold=np.nan)
 import matplotlib.pyplot as plt
 import warnings
 from PIL import Image
+import PIL.ImageOps
 from scipy import ndimage as ndi
 from skimage import feature
 from skimage import io
@@ -17,9 +18,12 @@ from skimage import transform
 from skimage import filters
 from skimage import util
 
+
+image = {}
 def openImage(filename):
     # read the image
-    filepath = 'drawing-robot/static/' + filename
+    print(os.getcwd() + '/static/')
+    filepath = '/home/pi/drawing-robot/static/' + filename
     print("Loading image " + filepath)
     im = io.imread(filepath)
     if im.shape[0] < im.shape[1]: # rotate image if height > width
@@ -38,8 +42,10 @@ def edgeDetector(imagename, algorithm):
     return edges
 
 def inverter(imagename): # invert image
-    inv = util.invert(imagename)
+    inv = 1 - np.asarray(imagename)
+#inv = PIL.ImageOps.invert(imagename)
     return inv
+#    return imagename
 
 def showResults(source, resize, edge, inv): # display results
     fig, axes = plt.subplots(nrows=2, ncols=2)
@@ -76,10 +82,10 @@ def resizeImage(source, size):
         return res
 
 def saveFile(filename, data): # saves result as filename.png in images subfolder
-    plt.imsave('drawing-robot/static/' + filename, data, cmap = plt.cm.gray)
+    plt.imsave('/home/pi/drawing-robot/static/' + filename, data, cmap = plt.cm.gray)
 
 def imageAsArray(filename, threshold): # stores image as binary array, threshold can be set
-    imagefile = Image.open('drawing-robot/static/' + filename).convert("L") # open image and convert to grayscale
+    imagefile = Image.open('/home/pi/drawing-robot/static/' + filename).convert("L") # open image and convert to grayscale
     imageAsArray = np.asarray(imagefile)
     imageAsArray.setflags(write=1) # it's read only by default
     for ix in range(imageAsArray.shape[0]):
@@ -91,6 +97,6 @@ def imageAsArray(filename, threshold): # stores image as binary array, threshold
     if imageAsArray.shape[0] < imageAsArray.shape[1]: # rotate image if height > width
         imageAsArray = np.rot90(imageAsArray)
     # adding a border to the image to circumvent problems with pixel finding algorithm:
-    imageAsArray = np.pad(imageAsArray, pad_width=2, mode='constant', constant_values=1)
+#    imageAsArray = np.pad(imageAsArray, pad_width=2, mode='constant', constant_values=1)
     print("made array of size x: " + str(imageAsArray.shape[0]) + ", y: " + str(imageAsArray.shape[1]))
     return imageAsArray
