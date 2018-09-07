@@ -30,8 +30,8 @@ def setupSimulation(simulation, image, arms):
     imageFrameY = [image['originY'],image['originY'],image['originY']+image['height'],image['originY']+image['height'],image['originY']]
     sim.line(imageFrameX, imageFrameY, line_width=3, color="deeppink")
     sim.circle(0,0,line_color="deeppink",line_width=3,radius=arms['armLength'],fill_color="deeppink",fill_alpha=0.1)
-    sim.image(image=[np.rot90(np.fliplr(image['array']))], x=image['originX']-0.5, y=image['originY']-0.5,
-              dw=image['width'], dh=image['height'], global_alpha=0.3)
+    #sim.image(image=[np.rot90(np.fliplr(image['array']))], x=image['originX']-0.5, y=image['originY']-0.5,
+    #          dw=image['width'], dh=image['height'], global_alpha=0.3)
     tab = Panel(child = sim, title = "Simulator")
     simulation['innerArmDataStream'] = iads
     simulation['outerArmDataStream'] = oads

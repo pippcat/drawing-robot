@@ -18,7 +18,7 @@ import bokeh.plotting as bp
 from bokeh.events import ButtonClick
 from bokeh.io import curdoc
 from bokeh.models import Panel, Button, Range1d, Plot
-from bokeh.models.widgets import Tabs, Div, TextInput, MultiSelect
+from bokeh.models.widgets import Tabs, Div, TextInput, MultiSelect, Slider
 from bokeh.layouts import column, row, WidgetBox
 from time import sleep
 # own stuff:
@@ -121,7 +121,69 @@ def settingsTab():
     settings = Panel(child = settingsElements, title = "Settings")
     return settings
 
-# Image manipulation tab1
+def callbackSize():
+    name = randomChar(2)
+    image['outputSize'] = int(settingsOutputSize.value)
+    im = openImage(image['inputFilename']) # open image
+    saveFile(name + '_orig.png', im)
+    saveFile(image['inputFilename'] + '_orig.png', result)
+    res = resizeImage(im,image['outputSize']) # resize it
+    saveFile(name + '_scaledown.png', res)
+    saveFile(image['inputFilename'] + '_scaledown.png', result)
+    edge = edgeDetector(res, str(image['edgeAlgorithm'])) # detect edges
+    saveFile(name + '_edge.png', edge)
+    saveFile(image['inputFilename'] + '_edge.png', result)
+    inv = inverter(edge) # invert result
+    saveFile(name + '_inv.png', inv) # save file
+    saveFile(image['inputFilename'] + '_inv.png', result)
+    result = imageAsArray(name + '_inv.png', image['treshold']) # store as array
+    image['array'] = result
+    saveFile(name + '_result.png', result)
+    saveFile(image['inputFilename'] + '_result.png', result)
+    img_orig = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_orig.png']))
+    img_scaledown = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_scaledown.png']))
+    img_edge = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_edge.png']))
+    img_inv = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_inv.png']))
+    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_result.png']))
+    img_orig.data.update(dict(url = ['drawing-robot/static/' + name + '_orig.png']))
+    showImageOrig.image_url(url='url', x=0, y=500,
+        h=simulation['sizeX'],
+        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        source=img_orig)
+    showImageResize.image_url(url='url', x=0, y=500,
+        h=simulation['sizeX'],
+        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        source=img_scaledown)
+    showImageEdge.image_url(url='url', x=0, y=500,
+        h=simulation['sizeX'],
+        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        source=img_edge)
+    showImageInv.image_url(url='url', x=0, y=500,
+        h=simulation['sizeX'],
+        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        source=img_inv)
+    showImageResult.image_url(url='url', x=0, y=500,
+        h=simulation['sizeX'],
+        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        source=img_result)
+    simulation['figure']['image'],image(image=[np.rot90(np.fliplr(image['array']))], x=image['originX']-0.5, y=image['originY']-0.5,
+              dw=image['width'], dh=image['height'], global_alpha=0.3)
+
+def callbackTreshold():
+    name = randomChar(2)
+    image['treshold'] = float(settingsTreshold.value)
+    result = imageAsArray(image['inputFilename'] + '_inv.png', image['treshold']) # store as array
+    image['array'] = result
+    saveFile(name + '_result.png', result)
+    saveFile(image['inputFilename'] + '_result.png', result)
+    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_result.png']))
+    showImageResult.image_url(url='url', x=0, y=500,
+        h=simulation['sizeX'],
+        w=float(simulation['sizeX'])/float(result.shape[0])*float(result.shape[1]),
+        source=img_result)
+    simulation['figure']['image'].image(image=[np.rot90(np.fliplr(image['array']))], x=image['originX']-0.5, y=image['originY']-0.5,
+              dw=image['width'], dh=image['height'], global_alpha=0.3)
+
 def file_callback(attr,old,new):
     raw_contents = file_source.data['file_contents'][0]
     # remove the prefix that JS adds
@@ -129,10 +191,57 @@ def file_callback(attr,old,new):
     file_contents = base64.b64decode(b64_contents)
     file_io = BytesIO(file_contents)
     filepath = 'drawing-robot/static/' + file_source.data['file_name'][-1]
-    print(filepath)
     settingsInputFilename.update(value=file_source.data['file_name'][-1])
     with open(filepath, 'wb') as f:
         shutil.copyfileobj(file_io, f)
+    image['inputFilename'] = settingsInputFilename.value
+    image['outputSize'] = int(settingsOutputSize.value)
+    #image['edgeAlgorithm'] = settingsEdgeAlgorithm.value[-1] # value is a list containing one item
+    image['treshold'] = float(settingsTreshold.value)
+    #save settings before!
+    #imagename = randomChar(8)
+    imagename = image['inputFilename']
+    print('Image name on hard disk:',imagename)
+    im = openImage(image['inputFilename']) # open image
+    saveFile(imagename + '_orig.png', im)
+    res = resizeImage(im,image['outputSize']) # resize it
+    saveFile(imagename + '_scaledown.png', res)
+    edge = edgeDetector(res, str(image['edgeAlgorithm'])) # detect edges
+    saveFile(imagename + '_edge.png', edge)
+    inv = inverter(edge) # invert result
+    saveFile(imagename + '_inv.png', inv) # save file
+    result = imageAsArray(imagename + '_inv.png', image['treshold']) # store as array
+    image['array'] = result
+    saveFile(imagename + '_result.png', result)
+    img_orig = ColumnDataSource(dict(url = ['drawing-robot/static/' + imagename + '_orig.png']))
+    img_scaledown = ColumnDataSource(dict(url = ['drawing-robot/static/' + imagename + '_scaledown.png']))
+    img_edge = ColumnDataSource(dict(url = ['drawing-robot/static/' + imagename + '_edge.png']))
+    img_inv = ColumnDataSource(dict(url = ['drawing-robot/static/' + imagename + '_inv.png']))
+    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' + imagename + '_result.png']))
+    img_orig.data.update(dict(url = ['drawing-robot/static/' + imagename + '_orig.png']))
+    showImageOrig.image_url(url='url', x=0, y=500,
+        h=simulation['sizeX'],
+        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        source=img_orig)
+    showImageResize.image_url(url='url', x=0, y=500,
+        h=simulation['sizeX'],
+        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        source=img_scaledown)
+    showImageEdge.image_url(url='url', x=0, y=500,
+        h=simulation['sizeX'],
+        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        source=img_edge)
+    showImageInv.image_url(url='url', x=0, y=500,
+        h=simulation['sizeX'],
+        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        source=img_inv)
+    showImageResult.image_url(url='url', x=0, y=500,
+        h=simulation['sizeX'],
+        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        source=img_result)
+    print('resetup simulation')
+    setupSimulation(simulation, image, arms)
+    print('done')
 
 def uploadBut():
     file_source.on_change('data', file_callback)
@@ -174,90 +283,25 @@ def uploadBut():
 
 def imageTab():
     imageTabElements = column(
-                chooseFileButton,
-                row(settingsInputFilename, settingsOutputFilename),
-                settingsOutputSize,
-                row(settingsEdgeAlgorithm,settingsTreshold),
-                row(processImageButton,refreshButton),
+                row(chooseFileButton, settingsInputFilename),
+                #row(settingsInputFilename, settingsOutputFilename),
+                #settingsOutputSize,
+                #row(settingsEdgeAlgorithm,settingsTreshold),
+                #row(processImageButton,refreshButton),
+                row(settingsOutputSize, settingsTreshold),
                 showImageResult,
                 showImageOrig,
                 showImageResize,
                 showImageEdge,
                 showImageInv)
     tabImage = Panel(child = imageTabElements, title = "Image processing", name = "imagetab")
-    processImageButton.on_event(ButtonClick, processImage)
-    refreshButton.on_event(ButtonClick, refreshImage)
+    settingsTreshold.on_change('value', lambda attr, old, new: callbackTreshold())
+    settingsOutputSize.on_change('value', lambda attr, old, new: callbackSize())
+    #refreshButton.on_event(ButtonClick, refreshImage)
     return tabImage
-
-def refreshImage(event):
-    rootLayout = curdoc().get_model_by_name('original')
-    print(rootLayout)
-    showImageDiv = Div(text="""<img src="drawing-robot/static/out_orig.png>""")
-    #layout.children[1].children
-
-    # newResult = img_result.data
-    # newResult['url'] = ['drawing-robot/static/in.jpg']
-    # img_result.data = newResult
-    # img_orig = ColumnDataSource(dict(url = ['drawing-robot/static/in.jpg']))
-    # showImageOrig.image_url(url='url', x=0, y=500,
-    #     h=simulation['sizeX'],
-    #     w=simulation['sizeX'],
-    #     source=img_orig)
 
 def randomChar(y):
     return ''.join(choice(string.ascii_letters) for x in range(y))
-
-def processImage(event):
-    image['inputFilename'] = settingsInputFilename.value
-    image['outputSize'] = int(settingsOutputSize.value)
-    image['edgeAlgorithm'] = settingsEdgeAlgorithm.value[-1] # value is a list containing one item
-    image['treshold'] = float(settingsTreshold.value)
-    #save settings before!
-    #imagename = randomChar(8)
-    imagename = image['inputFilename']
-    print('Image name on hard disk:',imagename)
-    im = openImage(image['inputFilename']) # open image
-    saveFile(imagename + '_orig.png', im)
-    res = resizeImage(im,image['outputSize']) # resize it
-    saveFile(imagename + '_scaledown.png', res)
-    edge = edgeDetector(res, str(image['edgeAlgorithm'])) # detect edges
-    saveFile(imagename + '_edge.png', edge)
-    inv = inverter(edge) # invert result
-    saveFile(imagename + '_inv.png', inv) # save file
-    print(type(inv))
-    result = imageAsArray(imagename + '_inv.png', image['treshold']) # store as array
-    image['array'] = result
-    print(type(result))
-    saveFile(imagename + '_result.png', result)
-    img_orig = ColumnDataSource(dict(url = ['drawing-robot/static/' + imagename + '_orig.png']))
-    img_scaledown = ColumnDataSource(dict(url = ['drawing-robot/static/' + imagename + '_scaledown.png']))
-    img_edge = ColumnDataSource(dict(url = ['drawing-robot/static/' + imagename + '_edge.png']))
-    img_inv = ColumnDataSource(dict(url = ['drawing-robot/static/' + imagename + '_inv.png']))
-    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' + imagename + '_result.png']))
-    img_orig.data.update(dict(url = ['drawing-robot/static/' + imagename + '_orig.png']))
-    showImageOrig.image_url(url='url', x=0, y=500,
-        h=simulation['sizeX'],
-        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
-        source=img_orig)
-    showImageResize.image_url(url='url', x=0, y=500,
-        h=simulation['sizeX'],
-        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
-        source=img_scaledown)
-    showImageEdge.image_url(url='url', x=0, y=500,
-        h=simulation['sizeX'],
-        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
-        source=img_edge)
-    showImageInv.image_url(url='url', x=0, y=500,
-        h=simulation['sizeX'],
-        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
-        source=img_inv)
-    showImageResult.image_url(url='url', x=0, y=500,
-        h=simulation['sizeX'],
-        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
-        source=img_result)
-    print('resetup simulation')
-    setupSimulation(simulation, image, arms)
-    print('done')
 
 # RasPi tab
 def loggingTab():
@@ -340,17 +384,20 @@ button.on_click(startButton)
 ### UI elements
 # UI elements for image tab:
 settingsImageScale = TextInput(value=str(imageScaleFactor), title="Image scale:")
-settingsOutputFilename = TextInput(value=str(image['outputFilename']), title="Filename of output file:")
+#settingsOutputFilename = TextInput(value=str(image['outputFilename']), title="Filename of output file:")
 settingsInputFilename = TextInput(value=str(image['inputFilename']), title="Filename of input file:")
-settingsTreshold = TextInput(value=str(image['treshold']), title="Threshold for conversion to black and white image:")
+#settingsTreshold = TextInput(value=str(image['treshold']), title="Threshold for conversion to black and white image:")
+settingsTreshold = Slider(start=0, end=1, value=0.8, step=.05,
+                      title="Threshold for conversion to black and white")
 settingsOriginX = TextInput(value=str(image['originX']), title="Origin x:")
 settingsOriginY = TextInput(value=str(image['originY']), title="Origin y:")
-settingsEdgeAlgorithm = MultiSelect(value=[str(image['edgeAlgorithm'])], title="Edgde detection algorithm:",
-                                        options=['scharr','frangi','canny'])
-settingsOutputSize = TextInput(value=str(image['outputSize']), title="Resolution of output image")
+#settingsEdgeAlgorithm = MultiSelect(value=[str(image['edgeAlgorithm'])], title="Edgde detection algorithm:",
+                                        # options=['scharr','frangi','canny'])
+settingsOutputSize = Slider(start=50, end=500, step=10, value=image['outputSize'],
+                            title="Resolution of output image")
 chooseFileButton = uploadBut()
-processImageButton = Button(label="Process image", button_type="success")
-refreshButton = Button(label="refresh", button_type="success")
+#processImageButton = Button(label="Process image", button_type="success")
+#refreshButton = Button(label="refresh", button_type="success")
 
 showImageOrig = bp.Figure(plot_width=int(simulation['sizeX']), plot_height=int(simulation['sizeY']), title="Original image", name="original")
 showImageOrig.toolbar.logo = None
@@ -392,7 +439,8 @@ showImageEdge.yaxis.visible = None
 showImageEdge.xgrid.grid_line_color = None
 showImageEdge.ygrid.grid_line_color = None
 
-showImageResult = bp.Figure(plot_width=int(simulation['sizeX']), plot_height=int(simulation['sizeY']), title="Image that will be drawn")
+showImageResult = bp.Figure(plot_width=int(simulation['sizeX']), plot_height=int(simulation['sizeY']),
+                            title='Image that will be drawn', sizing_mode='scale_width')
 showImageResult.toolbar.logo = None
 showImageResult.toolbar_location = None
 showImageResult.x_range=Range1d(start=0, end=simulation['sizeX'])
@@ -443,7 +491,7 @@ tab1 = imageTab()
 tab2 = settingsTab()
 tab3 = setupSimulation(simulation, image, arms)
 tab4 = loggingTab()
-tabs = Tabs(tabs = [tab2, tab1, tab3, tab4])
+tabs = Tabs(tabs = [tab1, tab3, tab2, tab4], sizing_mode='scale_width')
 layout = column(children=[button, tabs], sizing_mode='scale_width', name='mainLayout')
 curdoc().add_root(layout)
 #curdoc().add_root(column(children=[header, tabs], sizing_mode='scale_width', name='mainLayout'))

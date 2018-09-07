@@ -98,5 +98,5 @@ def imageAsArray(filename, threshold): # stores image as binary array, threshold
         imageAsArray = np.rot90(imageAsArray)
     # adding a border to the image to circumvent problems with pixel finding algorithm:
 #    imageAsArray = np.pad(imageAsArray, pad_width=2, mode='constant', constant_values=1)
-    print("made array of size x: " + str(imageAsArray.shape[0]) + ", y: " + str(imageAsArray.shape[1]))
+    #print("made array of size x: " + str(imageAsArray.shape[0]) + ", y: " + str(imageAsArray.shape[1]))
     return imageAsArray
