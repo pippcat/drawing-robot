@@ -26,7 +26,7 @@ from time import sleep
 from helper import *
 from imageProcessor.imageProcessor import *
 from simulator.simulator import *
-#from raspiRobot.raspiRobot import *
+from raspiRobot.raspiRobot import *
 
 from io import BytesIO
 import base64
@@ -331,9 +331,8 @@ def drawLine(image, arms, raspi):
                 if simulation['animateArms']:
                     moveArms(arms, simulation)
             if raspi['switchedOn']:
-                image['distance'] = "far"
-                raspiRobot.raspiRobot.setAngle(arms,image)
-                raspiRobot.raspiRobot.movePen(down, raspi['waitTimePen'])
+                setAngle(arms,raspi, 'far')
+                movePen(arms, raspi, 'down')
             findAdjacentPixel(image)
             if (not image['foundNextPixel']) and simulation['switchedOn']:
                 drawPixel(simulation, image)
@@ -347,10 +346,10 @@ def drawLine(image, arms, raspi):
                             moveArms(arms, simulation)
                         appendLine(simulation, image)
                     if raspi['switchedOn']:
-                        image['distance'] = "near"
-                        raspiRobot.raspiRobot.setAngle(arms,image)
+                        setAngle(arms,raspi,'near')
                     findAdjacentPixel(image)
         print('finished drawing line ', image['lineCounter'])
+
     else:
         # hurray, we finished drawing
         print('Done drawing ', image['pixelCounter'], ' pixel in ', image['lineCounter'], 'lines.')
@@ -364,7 +363,7 @@ def drawLine(image, arms, raspi):
 def update():
     drawLine(image, arms, raspi)
     if raspi['switchedOn']:
-        raspiRobot.raspiRobot.movePen(up, raspi['waitTimePen'])
+        movePen(arms, raspi, 'up')
 
 def test():
     # setup everything and draw the first line
@@ -485,6 +484,10 @@ settingsSizeX = TextInput(value=str(simulation['sizeX']), title="Width of simula
 settingsSizeY = TextInput(value=str(simulation['sizeY']), title="Height of simulation window:")
 #include checkbox for animate arms
 
+
+### setting up raspi:
+if raspi['switchedOn']:
+    setupRaspi(arms, raspi)
 
 ### setting up the browser window
 tab1 = imageTab()
