@@ -1,6 +1,6 @@
-/companion/images/*
-!/companion/images/.gitkeep
+/static/*
+!/static/.gitkeep
 *__pycache__*
-*/__pycache__/*
+__pycache__/*
 *.swp
 *.pyc

@@ -166,8 +166,8 @@ def callbackSize():
         h=simulation['sizeX'],
         w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
         source=img_result)
-    simulation['figure']['image'],image(image=[np.rot90(np.fliplr(image['array']))], x=image['originX']-0.5, y=image['originY']-0.5,
-              dw=image['width'], dh=image['height'], global_alpha=0.3)
+    image['outputFilename'] = name
+    updateSimulationBackground(simulation, image, name)
 
 def callbackTreshold():
     name = randomChar(2)
@@ -181,8 +181,11 @@ def callbackTreshold():
         h=simulation['sizeX'],
         w=float(simulation['sizeX'])/float(result.shape[0])*float(result.shape[1]),
         source=img_result)
-    simulation['figure']['image'].image(image=[np.rot90(np.fliplr(image['array']))], x=image['originX']-0.5, y=image['originY']-0.5,
-              dw=image['width'], dh=image['height'], global_alpha=0.3)
+    #simulation['figure']['image'].image(image=[np.rot90(np.fliplr(image['array']))], x=image['originX']-0.5, y=image['originY']-0.5,
+    #          dw=image['width'], dh=image['height'], global_alpha=0.3)
+    deleteOldBackground(simulation, image)
+    image['outputFilename'] = name
+    updateSimulationBackground(simulation, image)
 
 def file_callback(attr,old,new):
     raw_contents = file_source.data['file_contents'][0]
@@ -199,26 +202,26 @@ def file_callback(attr,old,new):
     #image['edgeAlgorithm'] = settingsEdgeAlgorithm.value[-1] # value is a list containing one item
     image['treshold'] = float(settingsTreshold.value)
     #save settings before!
-    #imagename = randomChar(8)
-    imagename = image['inputFilename']
-    print('Image name on hard disk:',imagename)
+    #name = randomChar(8)
+    name = image['inputFilename']
+    print('Image name on hard disk:',name)
     im = openImage(image['inputFilename']) # open image
-    saveFile(imagename + '_orig.png', im)
+    saveFile(name + '_orig.png', im)
     res = resizeImage(im,image['outputSize']) # resize it
-    saveFile(imagename + '_scaledown.png', res)
+    saveFile(name + '_scaledown.png', res)
     edge = edgeDetector(res, str(image['edgeAlgorithm'])) # detect edges
-    saveFile(imagename + '_edge.png', edge)
+    saveFile(name + '_edge.png', edge)
     inv = inverter(edge) # invert result
-    saveFile(imagename + '_inv.png', inv) # save file
-    result = imageAsArray(imagename + '_inv.png', image['treshold']) # store as array
+    saveFile(name + '_inv.png', inv) # save file
+    result = imageAsArray(name + '_inv.png', image['treshold']) # store as array
     image['array'] = result
-    saveFile(imagename + '_result.png', result)
-    img_orig = ColumnDataSource(dict(url = ['drawing-robot/static/' + imagename + '_orig.png']))
-    img_scaledown = ColumnDataSource(dict(url = ['drawing-robot/static/' + imagename + '_scaledown.png']))
-    img_edge = ColumnDataSource(dict(url = ['drawing-robot/static/' + imagename + '_edge.png']))
-    img_inv = ColumnDataSource(dict(url = ['drawing-robot/static/' + imagename + '_inv.png']))
-    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' + imagename + '_result.png']))
-    img_orig.data.update(dict(url = ['drawing-robot/static/' + imagename + '_orig.png']))
+    saveFile(name + '_result.png', result)
+    img_orig = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_orig.png']))
+    img_scaledown = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_scaledown.png']))
+    img_edge = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_edge.png']))
+    img_inv = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_inv.png']))
+    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_result.png']))
+    img_orig.data.update(dict(url = ['drawing-robot/static/' + name + '_orig.png']))
     showImageOrig.image_url(url='url', x=0, y=500,
         h=simulation['sizeX'],
         w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
@@ -239,9 +242,8 @@ def file_callback(attr,old,new):
         h=simulation['sizeX'],
         w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
         source=img_result)
-    print('resetup simulation')
-    setupSimulation(simulation, image, arms)
-    print('done')
+    image['outputFilename'] = name
+    updateSimulationBackground(simulation, image)
 
 def uploadBut():
     file_source.on_change('data', file_callback)
@@ -491,10 +493,10 @@ if raspi['switchedOn']:
 
 ### setting up the browser window
 tab1 = imageTab()
-tab2 = settingsTab()
+#tab2 = settingsTab()
 tab3 = setupSimulation(simulation, image, arms)
-tab4 = loggingTab()
-tabs = Tabs(tabs = [tab1, tab3, tab2, tab4], sizing_mode='scale_width')
+#tab4 = loggingTab()
+tabs = Tabs(tabs = [tab1, tab3], sizing_mode='scale_width')
 layout = column(children=[button, tabs], sizing_mode='scale_width', name='mainLayout')
 curdoc().add_root(layout)
 #curdoc().add_root(column(children=[header, tabs], sizing_mode='scale_width', name='mainLayout'))

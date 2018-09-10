@@ -10,7 +10,7 @@ from bokeh.client import push_session
 from bokeh.io import curdoc
 from bokeh.models import Panel, Button, ColumnDataSource, Plot
 from bokeh.models.widgets import Tabs
-from bokeh.models.glyphs import Ray, Line
+from bokeh.models.glyphs import Ray, Line, ImageURL
 from bokeh.layouts import column
 from time import sleep
 
@@ -30,14 +30,36 @@ def setupSimulation(simulation, image, arms):
     imageFrameY = [image['originY'],image['originY'],image['originY']+image['height'],image['originY']+image['height'],image['originY']]
     sim.line(imageFrameX, imageFrameY, line_width=3, color="deeppink")
     sim.circle(0,0,line_color="deeppink",line_width=3,radius=arms['armLength'],fill_color="deeppink",fill_alpha=0.1)
-    #sim.image(image=[np.rot90(np.fliplr(image['array']))], x=image['originX']-0.5, y=image['originY']-0.5,
-    #          dw=image['width'], dh=image['height'], global_alpha=0.3)
+    #simulation['backgroundImage'] = ColumnDataSource(dict(url = ['drawing-robot/static/' + image['inputFilename'] + '_result.png']))
+    #simulation['backgroundImage'] = ColumnDataSource(dict(url = []))
+    simulation['backgroundImageDS'] = ColumnDataSource(dict(url = []))
+    # simulation['figure'].image(image=[np.rot90(np.fliplr(image['array']))], x=image['originX']-0.5, y=image['originY']-0.5,
+    #           dw=image['width'], dh=image['height'], global_alpha=0.3, name="backgroundImage")
+    # sim.image_url(url='url', x=image['originX']-0.5, y = image['originY']-0.5,
+    #             global_alpha=0.3, h=image['height'], w=image['width'], source=simulation['backgroundImage'])
+    simulation['backgroundImage'] = ImageURL(url='url', x=image['originX']-0.5, y = image['originY']-0.5,
+                global_alpha=0.3, h=image['height'], w=image['width'],  anchor="bottom_left")
     tab = Panel(child = sim, title = "Simulator")
     simulation['innerArmDataStream'] = iads
     simulation['outerArmDataStream'] = oads
     simulation['figure'] = sim
+    simulation['glyph'] = simulation['figure'].add_glyph(simulation['backgroundImageDS'], simulation['backgroundImage'])
     return tab
 
+def deleteOldBackground(simulation, image):
+    print(image['outputFilename'])
+    simulation['glyph'].visible = False
+
+def updateSimulationBackground(simulation, image):
+    print(image['outputFilename'])
+
+    simulation['backgroundImageDS'] = ColumnDataSource(dict(url = ['drawing-robot/static/' + image['outputFilename']
+                                                                                     + '_result.png']))
+    simulation['glyph'] = simulation['figure'].add_glyph(simulation['backgroundImageDS'], simulation['backgroundImage'])
+    # simulation['backgroundImage'] = ColumnDataSource(dict(url = ['drawing-robot/static/' + image['outputFilename']
+    #                                                                                  + '_result.png']))
+    # simulation['figure'].image_url(url='url', x=image['originX']-0.5, y = image['originY']+image['height']-0.5,
+    #             global_alpha=0.3, h=image['height'], w=image['width'], source=simulation['backgroundImage   '])
 def moveArms(arms, simulation):
     newInner = simulation['innerArmDataStream'].data
     newOuter = simulation['outerArmDataStream'].data

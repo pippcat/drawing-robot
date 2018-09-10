@@ -72,9 +72,11 @@ def resizeImage(source, size):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         if source.shape[0] > source.shape[1]: # longer side of image will be set to size, other one is calculated to keep aspect ratio constant
+            print("landscape")
             width = size
             height = int(source.shape[1]*size/source.shape[0])
         else:
+            print("portrait")
             width = int(source.shape[0]*size/source.shape[1])
             height = size
         print("Resizing image. original size: " + str(source.shape[0]) + "x" + str(source.shape[1]) + "px. New size: " + str(width) + "x" + str(height) + "px.")
@@ -82,6 +84,8 @@ def resizeImage(source, size):
         return res
 
 def saveFile(filename, data): # saves result as filename.png in images subfolder
+    if data.shape[0] > data.shape[1]: # rotate image if height > width
+        data = np.rot90(data)
     plt.imsave('/home/pi/drawing-robot/static/' + filename, data, cmap = plt.cm.gray)
 
 def imageAsArray(filename, threshold): # stores image as binary array, threshold can be set
