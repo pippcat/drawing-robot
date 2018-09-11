@@ -33,12 +33,20 @@ def openImage(filename):
 def edgeDetector(imagename, algorithm):
     im = color.rgb2gray(imagename)  # image is colored, lets make it gray scale
     print('algorithm',algorithm)
-    if algorithm == "frangi":
-        edges = filters.frangi(im)
+    if algorithm == "roberts":
+        edges = filters.roberts(im)
     elif algorithm == "scharr":
         edges = filters.scharr(im)
-    elif algorithm == "canny":
+    elif algorithm == "sobel":
+        edges = filters.sobel(im)
+    elif algorithm == "prewitt":
+        edges = filters.prewitt(im)
+    elif algorithm == "canny-1":
+        edges = feature.canny(im, sigma=1)
+    elif algorithm == "canny-2":
         edges = feature.canny(im, sigma=2)
+    elif algorithm == "canny-3":
+        edges = feature.canny(im, sigma=3)
     return edges
 
 def inverter(imagename): # invert image

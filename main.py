@@ -18,7 +18,7 @@ import bokeh.plotting as bp
 from bokeh.events import ButtonClick
 from bokeh.io import curdoc
 from bokeh.models import Panel, Button, Range1d, Plot
-from bokeh.models.widgets import Tabs, Div, TextInput, MultiSelect, Slider
+from bokeh.models.widgets import Tabs, Div, TextInput, Select, Slider, PreText
 from bokeh.layouts import column, row, WidgetBox
 from time import sleep
 # own stuff:
@@ -26,7 +26,7 @@ from time import sleep
 from helper import *
 from imageProcessor.imageProcessor import *
 from simulator.simulator import *
-#from raspiRobot.raspiRobot import *
+from raspiRobot.raspiRobot import *
 
 from io import BytesIO
 import base64
@@ -92,7 +92,8 @@ image = {'inputFilename':"", 'outputFilename':outputFilename, 'treshold':treshol
          'skipProcessing':skipProcessing, 'foundNextPixel':True, 'foundLastPixel':False,
          'outputSize':outputSize}
 
-raspi = {'switchedOn':raspiSwitchedOn, 'frequency':frequency, 'waitTimeNear':waitTimeNear, 'waitTimeFar':waitTimeFar, 'waitTimePen':waitTimePen}
+raspi = {'switchedOn':raspiSwitchedOn, 'frequency':frequency, 'waitTimeNear':waitTimeNear, 'waitTimeFar':waitTimeFar,
+         'waitTimePen':waitTimePen, 'calibrateOuterArm': 0, 'calibrateInnerArm': 0, 'calibratePen': 0}
 
 simulation = {'switchedOn':simulatorSwitchedOn, 'browser':browser, 'sizeX':sizeX, 'sizeY':sizeY,
               'penWidth':penWidth, 'penColor':penColor, 'animateArms':animateArms,'lines':[]}
@@ -121,13 +122,134 @@ def settingsTab():
     return settings
 
 def callbackSize():
+    updateImageSettings()
     name = randomChar(2)
-    image['outputSize'] = int(settingsOutputSize.value)
     im = openImage(image['inputFilename']) # open image
     saveFile(name + '_orig.png', im)
     res = resizeImage(im,image['outputSize']) # resize it
     saveFile(name + '_scaledown.png', res)
-    edge = edgeDetector(res, str(image['edgeAlgorithm'])) # detect edges
+    edge = edgeDetector(res, image['edgeAlgorithm']) # detect edges
+    saveFile(name + '_edge.png', edge)
+    inv = inverter(edge) # invert result
+    saveFile(name + '_inv.png', inv) # save file
+    result = imageAsArray(name + '_inv.png', image['treshold']) # store as array
+    image['array'] = result
+    saveFile(name + '_result.png', result)
+    img_orig = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_orig.png']))
+    img_scaledown = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_scaledown.png']))
+    img_edge = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_edge.png']))
+    img_inv = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_inv.png']))
+    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_result.png']))
+    #maybe this solves random name bug: ?
+    #img_orig.data.update(dict(url = ['drawing-robot/static/' + name + '_orig.png']))
+    showImageOrig.image_url(url='url', x=0, y=500,
+        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        w=simulation['sizeX'],
+        source=img_orig)
+    showImageResize.image_url(url='url', x=0, y=500,
+        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        w=simulation['sizeX'],
+        source=img_scaledown)
+    showImageEdge.image_url(url='url', x=0, y=500,
+        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        w=simulation['sizeX'],
+        source=img_edge)
+    showImageInv.image_url(url='url', x=0, y=500,
+        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        w=simulation['sizeX'],
+        source=img_inv)
+    showImageResult.image_url(url='url', x=0, y=500,
+        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        w=simulation['sizeX'],
+        source=img_result)
+    image['outputFilename'] = name
+    updateSimulationBackground(simulation, image)
+
+def callbackTreshold():
+    updateImageSettings()
+    name = randomChar(2)
+    im = openImage(image['outputFilename'] + '_inv.png') # open image
+    saveFile(name + '_inv.png', im)
+    result = imageAsArray(image['outputFilename'] + '_inv.png', image['treshold']) # store as array
+    image['array'] = result
+    #saveFile(image['outputFilename'] + '_result.png', result)
+    saveFile(name + '_result.png', result)
+    #img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' + image['outputFilename'] + '_result.png']))
+    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_result.png']))
+    showImageResult.image_url(url='url', x=0, y=500,
+        h=float(simulation['sizeX'])/float(result.shape[0])*float(result.shape[1]),
+        w=simulation['sizeX'],
+        source=img_result)
+    image['outputFilename'] = name
+    updateSimulationBackground(simulation, image)
+
+def callbackCalibrateOuterArmButton():
+    raspi['calibrateOuterArm'] += 1
+    if raspi['calibrateOuterArm'] == 1:
+        calibrate(arms, raspi, "outerArm", 45)
+        calibrateInfo.text = """outerArm moved to 45deg, check if angle is right and press button again!"""
+    if raspi['calibrateOuterArm'] == 2:
+        calibrate(arms, raspi, "outerArm", 90)
+        calibrateInfo.text = """outerArm moved to 90deg, check if angle is right and press button again!"""
+    if raspi['calibrateOuterArm'] == 3:
+        calibrate(arms, raspi, "outerArm", 180)
+        calibrateInfo.text = """outerArm moved to 180deg, check if angle is right and press button again!"""
+    if raspi['calibrateOuterArm'] == 4:
+        raspi['calibrateOuterArm'] = 0
+        calibrate(arms, raspi, "outerArm", 90)
+        calibrateInfo.text = """outerArm moved to 90deg, calibration procedure done.
+Adjust outerArmMinPulse and outerArmMaxPulse
+and redo procedure until angles are good!"""
+
+def callbackCalibrateInnerArmButton():
+        raspi['calibrateInnerArm'] += 1
+        if raspi['calibrateInnerArm'] == 1:
+            calibrate(arms, raspi, "innerArm", 0)
+            calibrateInfo.text = """innerArm moved to 0deg, check if angle is right and press button again!"""
+        if raspi['calibrateInnerArm'] == 2:
+            calibrate(arms, raspi, "innerArm", 90)
+            calibrateInfo.text = """innerArm moved to 90deg, check if angle is right and press button again!"""
+        if raspi['calibrateInnerArm'] == 3:
+            calibrate(arms, raspi, "innerArm", 180)
+            calibrateInfo.text = """innerArm moved to 180deg, check if angle is right and press button again!"""
+        if raspi['calibrateInnerArm'] == 4:
+            raspi['calibrateInnerArm'] = 0
+            calibrate(arms, raspi, "innerArm", 90)
+            calibrateInfo.text = """innerArm moved to 90deg, calibration procedure done.
+    Adjust innerArmMinPulse and innerArmMaxPulse
+    and redo procedure until angles are good!"""
+
+def callbackCalibratePenButton():
+    raspi['calibratePen'] += 1
+    if raspi['calibratePen'] == 1:
+        calibrate(arms, raspi, "pen", 110, "down")
+        calibrateInfo.text = """pen moved down, check if angle is right!"""
+    if raspi['calibratePen'] == 2:
+        calibrate(arms, raspi, "pen", 110, "up")
+        calibrateInfo.text = """pen moved up, check if angle is right!"""
+    if raspi['calibratePen'] == 3:
+        raspi['calibratePen'] = 0
+
+def callbackUpdateCalibration():
+    arms['innerArmMinPulse'] = calibrateInnerArmMinPulseSlider.value
+    arms['innerArmMaxPulse'] = calibrateInnerArmMaxPulseSlider.value
+    arms['outerArmMinPulse'] = calibrateOuterArmMinPulseSlider.value
+    arms['outerArmMaxPulse'] = calibrateOuterArmMaxPulseSlider.value
+    arms['penDownAngle'] = calibratePenDownAngleSlider.value
+    arms['penUpAngle'] = calibratePenUpAngleSlider.value
+    calibrateInfo.text = """Calibration values updated!"""
+    print(arms)
+
+def callbackWriteConfig():
+    print('config will be written now!')
+
+def callbackAlgorithm():
+    print('callback algorithm')
+    updateImageSettings()
+    name = randomChar(2)
+    im = openImage(image['outputFilename'] + '_scaledown.png') # open image
+    saveFile(name + '_scaledown.png', im)
+    edge = edgeDetector(im, str(image['edgeAlgorithm'])) # detect edges
     saveFile(name + '_edge.png', edge)
     inv = inverter(edge) # invert result
     saveFile(name + '_inv.png', inv) # save file
@@ -163,21 +285,6 @@ def callbackSize():
     image['outputFilename'] = name
     updateSimulationBackground(simulation, image)
 
-def callbackTreshold():
-    name = randomChar(2)
-    image['treshold'] = float(settingsTreshold.value)
-    result = imageAsArray(image['inputFilename'] + '_inv.png', image['treshold']) # store as array
-    image['array'] = result
-    #saveFile(image['outputFilename'] + '_result.png', result)
-    saveFile(name + '_result.png', result)
-    #img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' + image['outputFilename'] + '_result.png']))
-    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_result.png']))
-    showImageResult.image_url(url='url', x=0, y=500,
-        h=float(simulation['sizeX'])/float(result.shape[0])*float(result.shape[1]),
-        w=simulation['sizeX'],
-        source=img_result)
-    image['outputFilename'] = name
-    updateSimulationBackground(simulation, image)
 
 def callbackFile(attr,old,new):
     raw_contents = file_source.data['file_contents'][0]
@@ -190,12 +297,10 @@ def callbackFile(attr,old,new):
     with open(filepath, 'wb') as f:
         shutil.copyfileobj(file_io, f)
     image['inputFilename'] = settingsInputFilename.value
-    image['outputSize'] = int(settingsOutputSize.value)
-    #image['edgeAlgorithm'] = settingsEdgeAlgorithm.value[-1] # value is a list containing one item
-    image['treshold'] = float(settingsTreshold.value)
+    updateImageSettings()
     #save settings before!
-    #name = randomChar(8)
-    name = image['inputFilename']
+    name = randomChar(2)
+    #name = image['inputFilename']
     print('Image name on hard disk:',name)
     im = openImage(image['inputFilename']) # open image
     saveFile(name + '_orig.png', im)
@@ -237,10 +342,34 @@ def callbackFile(attr,old,new):
     image['outputFilename'] = name
     updateSimulationBackground(simulation, image)
 
+### what to do if start button is clicked:
+def callbackStartButton():
+    global callback_id
+    if button.label == 'Start':
+        button.label = 'Stop'
+        button.button_type = 'warning'
+        callback_id = curdoc().add_periodic_callback(update, 200)
+    else:
+        button.label = 'Start'
+        button.button_type = 'success'
+        curdoc().remove_periodic_callback(callback_id)
+
+def callbackResetButton():
+    print('reset does not work yet')
+
+def updateImageSettings():
+    image['scale'] = float(imageScaleFactor) * float(image['array'].shape[0]) / float(arms['armLength'])
+    image['width'] = image['array'].shape[0]/image['scale']
+    image['height'] = image['array'].shape[1]/image['scale']
+    image['currentXInArray'] = image['currentYInArray'] = False
+    image['treshold'] = float(settingsTreshold.value)
+    image['edgeAlgorithm'] = str(settingsAlgorithm.value)
+    image['outputSize'] = int(settingsOutputSize.value)
+
 def uploadBut():
     file_source.on_change('data', callbackFile)
 
-    button = Button(label="Choose file..")
+    button = Button(label="Choose file..", width = 500)
     button.callback = CustomJS(args=dict(file_source=file_source), code = """
     function read_file(filename) {
         var reader = new FileReader();
@@ -282,18 +411,27 @@ def imageTab():
                 #settingsOutputSize,
                 #row(settingsEdgeAlgorithm,settingsTreshold),
                 #row(processImageButton,refreshButton),
-                row(settingsOutputSize, settingsTreshold),
-                row(changeResolutionButton, changeTresholdButton),
+                row(settingsOutputSize, settingsTreshold, settingsAlgorithm),
+                row(changeResolutionButton, changeTresholdButton, changeAlgorithmButton),
                 showImageResult,
                 showImageOrig,
                 showImageResize,
                 showImageEdge,
                 showImageInv)
     tabImage = Panel(child = imageTabElements, title = "Image processing", name = "imagetab")
-    #settingsTreshold.on_change('value', lambda attr, old, new: callbackTreshold())
-    #settingsOutputSize.on_change('value', lambda attr, old, new: callbackSize())
-    #refreshButton.on_event(ButtonClick, refreshImage)
     return tabImage
+
+def calibrationTab():
+    calibrationTabElements = column(
+        row(calibrateInnerArmMinPulseSlider, calibrateInnerArmMaxPulseSlider),
+        row(calibrateOuterArmMinPulseSlider, calibrateOuterArmMaxPulseSlider),
+        row(calibratePenDownAngleSlider, calibratePenUpAngleSlider),
+        row(calibrateInnerArmButton, calibrateOuterArmButton, calibratePenButton),
+        row(calibrateUpdateButton, calibrateWriteConfigButton),
+        calibrateInfo
+    )
+    tabCalibration = Panel(child = calibrationTabElements, title = 'Calibration', name = 'calibrationtab')
+    return tabCalibration
 
 def randomChar(y):
     return ''.join(choice(string.ascii_letters) for x in range(y))
@@ -303,22 +441,6 @@ def loggingTab():
     info = Div(text="""<img src="drawing-robot/static/out_orig.png">""")
     tabRaspi = Panel(child = info, title = "Logging informations")
     return tabRaspi
-
-### what to do if start button is clicked:
-def callbackStartButton():
-    global callback_id
-    if button.label == 'Start':
-        button.label = 'Stop'
-        button.button_type = 'warning'
-        callback_id = curdoc().add_periodic_callback(update, 200)
-    else:
-        button.label = 'Start'
-        button.button_type = 'success'
-        curdoc().remove_periodic_callback(callback_id)
-
-def callbackResetButton():
-    print('reset does not work yet')
-
 
 ### drawing function
 def drawLine(image, arms, raspi):
@@ -385,7 +507,7 @@ resetButton.on_click(callbackResetButton)
 settingsImageScale = TextInput(value=str(imageScaleFactor), title="Image scale:")
 #settingsOutputFilename = TextInput(value=str(image['outputFilename']), title="Filename of output file:")
 settingsInputFilename = TextInput(value=str(image['inputFilename']), title="Filename of input file:")
-settingsTreshold = Slider(start=0, end=1, value=0.8, step=.05,
+settingsTreshold = Slider(start=0, end=1, value=0.8, step=.01,
                       title="Threshold for conversion to black & white")
 settingsOriginX = TextInput(value=str(image['originX']), title="Origin x:")
 settingsOriginY = TextInput(value=str(image['originY']), title="Origin y:")
@@ -393,16 +515,24 @@ settingsOriginY = TextInput(value=str(image['originY']), title="Origin y:")
                                         # options=['scharr','frangi','canny'])
 settingsOutputSize = Slider(start=50, end=500, step=10, value=image['outputSize'],
                             title="Resolution of output image")
+settingsAlgorithm = Select(options = ['roberts', 'sobel', 'scharr', 'prewitt', 'canny-1', 'canny-2', 'canny-3'],
+                           value=image['edgeAlgorithm'])
 chooseFileLabel = Div(text="""""")
 chooseFileButton = uploadBut()
-changeTresholdButton = Button(label="change Threshold", button_type="primary")
+changeTresholdButton = Button(label="Change Threshold", button_type="primary")
 changeTresholdButton.on_click(callbackTreshold)
-changeResolutionButton = Button(label="change Resolution", button_type="primary")
+changeResolutionButton = Button(label="Change Resolution", button_type="primary")
 changeResolutionButton.on_click(callbackSize)
+changeAlgorithmButton = Button(label="Change Edge Algorithm", button_type="primary")
+changeAlgorithmButton.on_click(callbackAlgorithm)
 
 showImageOrig = bp.Figure(plot_width=int(simulation['sizeX']), plot_height=int(simulation['sizeY']), title="Original image", name="original")
 showImageOrig.toolbar.logo = None
 showImageOrig.toolbar_location = None
+showImageOrig.toolbar.active_inspect = None
+showImageOrig.toolbar.active_scroll = None
+showImageOrig.toolbar.active_tap = None
+showImageOrig.toolbar.active_drag = None
 showImageOrig.x_range=Range1d(start=0, end=simulation['sizeX'])
 showImageOrig.y_range=Range1d(start=0, end=simulation['sizeY'])
 showImageOrig.xaxis.visible = None
@@ -413,6 +543,10 @@ showImageOrig.ygrid.grid_line_color = None
 showImageResize = bp.Figure(plot_width=int(simulation['sizeX']), plot_height=int(simulation['sizeY']), title="Resized image")
 showImageResize.toolbar.logo = None
 showImageResize.toolbar_location = None
+showImageResize.toolbar.active_inspect = None
+showImageResize.toolbar.active_scroll = None
+showImageResize.toolbar.active_tap = None
+showImageResize.toolbar.active_drag = None
 showImageResize.x_range=Range1d(start=0, end=simulation['sizeX'])
 showImageResize.y_range=Range1d(start=0, end=simulation['sizeX'])
 showImageResize.xaxis.visible = None
@@ -423,6 +557,10 @@ showImageResize.ygrid.grid_line_color = None
 showImageInv = bp.Figure(plot_width=int(simulation['sizeX']), plot_height=int(simulation['sizeY']), title="Inverted image")
 showImageInv.toolbar.logo = None
 showImageInv.toolbar_location = None
+showImageInv.toolbar.active_inspect = None
+showImageInv.toolbar.active_scroll = None
+showImageInv.toolbar.active_tap = None
+showImageInv.toolbar.active_drag = None
 showImageInv.x_range=Range1d(start=0, end=simulation['sizeX'])
 showImageInv.y_range=Range1d(start=0, end=simulation['sizeX'])
 showImageInv.xaxis.visible = None
@@ -433,6 +571,10 @@ showImageInv.ygrid.grid_line_color = None
 showImageEdge = bp.Figure(plot_width=int(simulation['sizeX']), plot_height=int(simulation['sizeY']), title="Image after edge detection")
 showImageEdge.toolbar.logo = None
 showImageEdge.toolbar_location = None
+showImageEdge.toolbar.active_inspect = None
+showImageEdge.toolbar.active_scroll = None
+showImageEdge.toolbar.active_tap = None
+showImageEdge.toolbar.active_drag = None
 showImageEdge.x_range=Range1d(start=0, end=simulation['sizeX'])
 showImageEdge.y_range=Range1d(start=0, end=simulation['sizeX'])
 showImageEdge.xaxis.visible = None
@@ -486,6 +628,33 @@ settingsSizeX = TextInput(value=str(simulation['sizeX']), title="Width of simula
 settingsSizeY = TextInput(value=str(simulation['sizeY']), title="Height of simulation window:")
 #include checkbox for animate arms
 
+### calibration tab objects
+calibrateUpdateButton = Button(label='Update values!', width=200, button_type='warning')
+calibrateUpdateButton.on_click(callbackUpdateCalibration)
+calibrateWriteConfigButton = Button(label='Write values to config file!', width=200, button_type='danger')
+calibrateWriteConfigButton.on_click(callbackWriteConfig)
+calibrateInnerArmButton = Button(label='Calibrate inner arm', width=200)
+calibrateInnerArmButton.on_click(callbackCalibrateInnerArmButton)
+calibrateOuterArmButton = Button(label='Calibrate outer arm', width=200)
+calibrateOuterArmButton.on_click(callbackCalibrateOuterArmButton)
+calibratePenButton = Button(label='Calibrate Pen position', width=200)
+calibratePenButton.on_click(callbackCalibratePenButton)
+calibrateInnerArmMinPulseSlider = Slider(start=500, end=1500, value=arms['innerArmMinPulse'] , step=10,
+                      title="inner arm minimum pulse")
+calibrateInnerArmMaxPulseSlider = Slider(start=2000, end=4000, value=arms['innerArmMaxPulse'] , step=10,
+                      title="inner arm maximum pulse")
+calibrateOuterArmMinPulseSlider = Slider(start=500, end=1500, value=arms['outerArmMinPulse'] , step=10,
+                      title="outer arm minimum pulse")
+calibrateOuterArmMaxPulseSlider = Slider(start=2000, end=4000, value=arms['outerArmMaxPulse'] , step=10,
+                      title="outer arm maximum pulse")
+calibratePenDownAngleSlider = Slider(start=0, end=180, value=arms['penDownAngle'] , step=10,
+                      title="pen down angle")
+calibratePenUpAngleSlider = Slider(start=0, end=180, value=arms['penUpAngle'] , step=10,
+                      title="pen up angle")
+calibrateInfo = PreText(text="""information will be displayed here..""",
+width=600, height=100)
+
+
 
 ### setting up raspi:
 if raspi['switchedOn']:
@@ -496,6 +665,9 @@ tab1 = imageTab()
 #tab2 = settingsTab()
 tab3 = setupSimulation(simulation, image, arms)
 #tab4 = loggingTab()
+#tab5 = calibrationTab()
 tabs = Tabs(tabs = [tab1, tab3], sizing_mode='scale_width')
-layout = column(children=[row(button, resetButton), tabs], sizing_mode='scale_width', name='mainLayout')
+#layout = column(children=[row(button, resetButton), tabs], sizing_mode='scale_width', name='mainLayout')
+layout = column(children=[button, tabs], sizing_mode='scale_width', name='mainLayout')
+curdoc().title = "Drawing Robot"
 curdoc().add_root(layout)

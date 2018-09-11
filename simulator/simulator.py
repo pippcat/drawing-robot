@@ -21,7 +21,8 @@ def setupSimulation(simulation, image, arms):
     #sim = bp.figure(title="Drawing Robot Simulator", width=sizeX, height=sizeY)
     sim = bp.figure(width=simulation['sizeX'], height=simulation['sizeY'],
                     x_range=(-0.25*arms['armLength'],arms['armLength']),
-                    y_range=(0,1.25*arms['armLength']))
+                    y_range=(0,1.25*arms['armLength']),
+                    tools="")
     innerArm = Ray(x="x", y="y", angle="a", length="l", name="n", line_width="w", line_color="c") # add a line for inner arm without data
     outerArm = Ray(x="x", y="y", angle="a", length="l", name="n", line_width="w", line_color="c") # add a line for outer arm without data
     sim.add_glyph(iads, innerArm)
@@ -31,12 +32,13 @@ def setupSimulation(simulation, image, arms):
     sim.line(imageFrameX, imageFrameY, line_width=3, color="deeppink")
     sim.circle(0,0,line_color="deeppink",line_width=3,radius=arms['armLength'],fill_color="deeppink",fill_alpha=0.1)
     simulation['backgroundImageDF'] = ColumnDataSource(dict(url = []))
-    #simulation['backgroundImage'] = ImageURL(url='url', x=image['originX']-0.5, y = image['originY']-0.5,
-                #global_alpha=0.3, h=image['height'], w=image['width'],  anchor="bottom_left")
     simulation['backgroundImage'] = sim.image_url(url='url', x=image['originX']-0.5,
-        y = image['height']/image['width']*image['height'] + image['originY']-0.5,
-        h=image['height']/image['width']*image['height'], w=image['width'],
+        y = image['height'] + image['originY']-0.5,
+        h=image['height'], w=image['width'],
         global_alpha=0.3, source=simulation['backgroundImageDF'])
+    # on debian with other version of bokeh this had to be:
+    # y = image['height']/image['width']*image['height'] + image['originY']-0.5
+    # h=image['height']/image['width']*image['height']
     tab = Panel(child = sim, title = "Drawing robot")
     simulation['innerArmDataStream'] = iads
     simulation['outerArmDataStream'] = oads

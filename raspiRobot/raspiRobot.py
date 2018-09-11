@@ -37,36 +37,20 @@ def movePen(arms, raspi, direction):
     if direction == "down":
         print("pen down!")
         arms['penMotor'].angle = arms['penDownAngle']
-        print(arms['penMotor'], arms['penDownAngle'],raspi['waitTimePen'])
     if direction == "up":
         print("pen up!")
         arms['penMotor'].angle = arms['penUpAngle']
     time.sleep(raspi['waitTimePen']) # check how small it could be!
 
-def calibrate(arms, raspi, motor):
+def calibrate(arms, raspi, motor, angle, direction=False):
+    print('Calibrating', motor, 'moving to', angle, 'degrees.')
     if motor == "innerArm":
-        print("Calibrating innerArm")
-        for i in range(0,180,45):
-            print("moving to " + str(i) + " degrees")
-            arms['innerArm'].angle = i
-            input("press button to continue!")
-        print("finished, moving to 90 degrees")
-        arms['innerArm'].angle = 90
-        time.sleep(1)
+        arms['innerArm'].angle = angle
     elif motor == "outerArm":
-        print("Calibrating outerArm")
-        for i in range(0,180,45):
-            print("moving to " + str(i) + " degrees")
-            arms['outerArm'].angle = i
-            input("press button to continue!")
-        print("finished, moving to 90 degrees")
-        arms['outerArm'].angle = 90
-        time.sleep(1)
+        arms['outerArm'].angle = angle
     elif motor == "pen":
-        print("Calibrating penMotor")
-        print("moving pen down")
-        movePen(arms, raspi, "down")
-        input("press button to continue!")
-        print("moving pen up")
-        movePen(arms, raspi, "up")
-        input("press button to continue!")
+        if direction == "down":
+            movePen(arms, raspi, "down")
+        if direction == "up":
+            movePen(arms, raspi, "up")
+    time.sleep(1)
