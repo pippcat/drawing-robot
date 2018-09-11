@@ -22,8 +22,8 @@ from skimage import util
 image = {}
 def openImage(filename):
     # read the image
-    print(os.getcwd() + '/static/')
-    filepath = '/home/pi/drawing-robot/static/' + filename
+    print(os.getcwd()+ '/drawing-robot/static/' + filename)
+    filepath = os.getcwd()+ '/drawing-robot/static/' + filename
     print("Loading image " + filepath)
     im = io.imread(filepath)
     if im.shape[0] < im.shape[1]: # rotate image if height > width
@@ -86,10 +86,10 @@ def resizeImage(source, size):
 def saveFile(filename, data): # saves result as filename.png in images subfolder
     if data.shape[0] > data.shape[1]: # rotate image if height > width
         data = np.rot90(data)
-    plt.imsave('/home/pi/drawing-robot/static/' + filename, data, cmap = plt.cm.gray)
+    plt.imsave(os.getcwd()+ '/drawing-robot/static/' + filename, data, cmap = plt.cm.gray)
 
 def imageAsArray(filename, threshold): # stores image as binary array, threshold can be set
-    imagefile = Image.open('/home/pi/drawing-robot/static/' + filename).convert("L") # open image and convert to grayscale
+    imagefile = Image.open(os.getcwd()+ '/drawing-robot/static/' + filename).convert("L") # open image and convert to grayscale
     imageAsArray = np.asarray(imagefile)
     imageAsArray.setflags(write=1) # it's read only by default
     for ix in range(imageAsArray.shape[0]):

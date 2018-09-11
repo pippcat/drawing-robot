@@ -26,7 +26,7 @@ from time import sleep
 from helper import *
 from imageProcessor.imageProcessor import *
 from simulator.simulator import *
-from raspiRobot.raspiRobot import *
+#from raspiRobot.raspiRobot import *
 
 from io import BytesIO
 import base64
@@ -102,7 +102,6 @@ callback_id = None
 ### parts of browser window:
 # info tab:
 def settingsTab():
-    #button.on_click(startButton)
     settingsElements = column(header,
                   row(settingsOriginX, settingsOriginY),
                   row(settingsInnerArmLength, settingsInnerArmActuationRange),
@@ -126,20 +125,15 @@ def callbackSize():
     image['outputSize'] = int(settingsOutputSize.value)
     im = openImage(image['inputFilename']) # open image
     saveFile(name + '_orig.png', im)
-    saveFile(image['inputFilename'] + '_orig.png', result)
     res = resizeImage(im,image['outputSize']) # resize it
     saveFile(name + '_scaledown.png', res)
-    saveFile(image['inputFilename'] + '_scaledown.png', result)
     edge = edgeDetector(res, str(image['edgeAlgorithm'])) # detect edges
     saveFile(name + '_edge.png', edge)
-    saveFile(image['inputFilename'] + '_edge.png', result)
     inv = inverter(edge) # invert result
     saveFile(name + '_inv.png', inv) # save file
-    saveFile(image['inputFilename'] + '_inv.png', result)
     result = imageAsArray(name + '_inv.png', image['treshold']) # store as array
     image['array'] = result
     saveFile(name + '_result.png', result)
-    saveFile(image['inputFilename'] + '_result.png', result)
     img_orig = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_orig.png']))
     img_scaledown = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_scaledown.png']))
     img_edge = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_edge.png']))
@@ -147,47 +141,45 @@ def callbackSize():
     img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_result.png']))
     img_orig.data.update(dict(url = ['drawing-robot/static/' + name + '_orig.png']))
     showImageOrig.image_url(url='url', x=0, y=500,
-        h=simulation['sizeX'],
-        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        w=simulation['sizeX'],
         source=img_orig)
     showImageResize.image_url(url='url', x=0, y=500,
-        h=simulation['sizeX'],
-        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        w=simulation['sizeX'],
         source=img_scaledown)
     showImageEdge.image_url(url='url', x=0, y=500,
-        h=simulation['sizeX'],
-        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        w=simulation['sizeX'],
         source=img_edge)
     showImageInv.image_url(url='url', x=0, y=500,
-        h=simulation['sizeX'],
-        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        w=simulation['sizeX'],
         source=img_inv)
     showImageResult.image_url(url='url', x=0, y=500,
-        h=simulation['sizeX'],
-        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        w=simulation['sizeX'],
         source=img_result)
     image['outputFilename'] = name
-    updateSimulationBackground(simulation, image, name)
+    updateSimulationBackground(simulation, image)
 
 def callbackTreshold():
     name = randomChar(2)
     image['treshold'] = float(settingsTreshold.value)
     result = imageAsArray(image['inputFilename'] + '_inv.png', image['treshold']) # store as array
     image['array'] = result
+    #saveFile(image['outputFilename'] + '_result.png', result)
     saveFile(name + '_result.png', result)
-    saveFile(image['inputFilename'] + '_result.png', result)
+    #img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' + image['outputFilename'] + '_result.png']))
     img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_result.png']))
     showImageResult.image_url(url='url', x=0, y=500,
-        h=simulation['sizeX'],
-        w=float(simulation['sizeX'])/float(result.shape[0])*float(result.shape[1]),
+        h=float(simulation['sizeX'])/float(result.shape[0])*float(result.shape[1]),
+        w=simulation['sizeX'],
         source=img_result)
-    #simulation['figure']['image'].image(image=[np.rot90(np.fliplr(image['array']))], x=image['originX']-0.5, y=image['originY']-0.5,
-    #          dw=image['width'], dh=image['height'], global_alpha=0.3)
-    deleteOldBackground(simulation, image)
     image['outputFilename'] = name
     updateSimulationBackground(simulation, image)
 
-def file_callback(attr,old,new):
+def callbackFile(attr,old,new):
     raw_contents = file_source.data['file_contents'][0]
     # remove the prefix that JS adds
     prefix, b64_contents = raw_contents.split(",", 1)
@@ -223,30 +215,30 @@ def file_callback(attr,old,new):
     img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_result.png']))
     img_orig.data.update(dict(url = ['drawing-robot/static/' + name + '_orig.png']))
     showImageOrig.image_url(url='url', x=0, y=500,
-        h=simulation['sizeX'],
-        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        w=simulation['sizeX'],
         source=img_orig)
     showImageResize.image_url(url='url', x=0, y=500,
-        h=simulation['sizeX'],
-        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        w=simulation['sizeX'],
         source=img_scaledown)
     showImageEdge.image_url(url='url', x=0, y=500,
-        h=simulation['sizeX'],
-        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        w=simulation['sizeX'],
         source=img_edge)
     showImageInv.image_url(url='url', x=0, y=500,
-        h=simulation['sizeX'],
-        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        w=simulation['sizeX'],
         source=img_inv)
     showImageResult.image_url(url='url', x=0, y=500,
-        h=simulation['sizeX'],
-        w=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
+        w=simulation['sizeX'],
         source=img_result)
     image['outputFilename'] = name
     updateSimulationBackground(simulation, image)
 
 def uploadBut():
-    file_source.on_change('data', file_callback)
+    file_source.on_change('data', callbackFile)
 
     button = Button(label="Choose file..")
     button.callback = CustomJS(args=dict(file_source=file_source), code = """
@@ -285,20 +277,21 @@ def uploadBut():
 
 def imageTab():
     imageTabElements = column(
-                row(chooseFileButton, settingsInputFilename),
+                row(column(chooseFileLabel,chooseFileButton), settingsInputFilename),
                 #row(settingsInputFilename, settingsOutputFilename),
                 #settingsOutputSize,
                 #row(settingsEdgeAlgorithm,settingsTreshold),
                 #row(processImageButton,refreshButton),
                 row(settingsOutputSize, settingsTreshold),
+                row(changeResolutionButton, changeTresholdButton),
                 showImageResult,
                 showImageOrig,
                 showImageResize,
                 showImageEdge,
                 showImageInv)
     tabImage = Panel(child = imageTabElements, title = "Image processing", name = "imagetab")
-    settingsTreshold.on_change('value', lambda attr, old, new: callbackTreshold())
-    settingsOutputSize.on_change('value', lambda attr, old, new: callbackSize())
+    #settingsTreshold.on_change('value', lambda attr, old, new: callbackTreshold())
+    #settingsOutputSize.on_change('value', lambda attr, old, new: callbackSize())
     #refreshButton.on_event(ButtonClick, refreshImage)
     return tabImage
 
@@ -312,14 +305,20 @@ def loggingTab():
     return tabRaspi
 
 ### what to do if start button is clicked:
-def startButton():
+def callbackStartButton():
     global callback_id
     if button.label == 'Start':
         button.label = 'Stop'
+        button.button_type = 'warning'
         callback_id = curdoc().add_periodic_callback(update, 200)
     else:
-        button.label = 'Play'
+        button.label = 'Start'
+        button.button_type = 'success'
         curdoc().remove_periodic_callback(callback_id)
+
+def callbackResetButton():
+    print('reset does not work yet')
+
 
 ### drawing function
 def drawLine(image, arms, raspi):
@@ -358,7 +357,7 @@ def drawLine(image, arms, raspi):
         # delete variables in dictionary:
         image['currentX'] = image['currentY'] = image['currentXInArray'] = image['currentYInArray'] = False
         image['currentLineX'] = image['currentLineY'] = []
-        startButton() # stop autorefresh
+        callbackStartButton() # stop autorefresh
         return
 
 ### what to be one once the browser window is updated:
@@ -367,10 +366,6 @@ def update():
     if raspi['switchedOn']:
         movePen(arms, raspi, 'up')
 
-def test():
-    # setup everything and draw the first line
-    update()
-
 ### populating image dictionary:
 image['array'] = imageAsArray('out_result.png', image['treshold'])
 image['scale'] = float(imageScaleFactor) * float(image['array'].shape[0]) / float(arms['armLength'])
@@ -378,27 +373,32 @@ image['width'] = image['array'].shape[0]/image['scale']
 image['height'] = image['array'].shape[1]/image['scale']
 image['currentXInArray'] = image['currentYInArray'] = False
 
-### behaviour of start button:
-button = Button(label='Start', width=60)
-button.on_click(startButton)
+### behaviour of start and reset button:
+button = Button(label='Start', button_type='success')
+button.on_click(callbackStartButton)
+resetButton = Button(label='Reset', button_type='danger')
+resetButton.on_click(callbackResetButton)
+
 
 ### UI elements
 # UI elements for image tab:
 settingsImageScale = TextInput(value=str(imageScaleFactor), title="Image scale:")
 #settingsOutputFilename = TextInput(value=str(image['outputFilename']), title="Filename of output file:")
 settingsInputFilename = TextInput(value=str(image['inputFilename']), title="Filename of input file:")
-#settingsTreshold = TextInput(value=str(image['treshold']), title="Threshold for conversion to black and white image:")
 settingsTreshold = Slider(start=0, end=1, value=0.8, step=.05,
-                      title="Threshold for conversion to black and white")
+                      title="Threshold for conversion to black & white")
 settingsOriginX = TextInput(value=str(image['originX']), title="Origin x:")
 settingsOriginY = TextInput(value=str(image['originY']), title="Origin y:")
 #settingsEdgeAlgorithm = MultiSelect(value=[str(image['edgeAlgorithm'])], title="Edgde detection algorithm:",
                                         # options=['scharr','frangi','canny'])
 settingsOutputSize = Slider(start=50, end=500, step=10, value=image['outputSize'],
                             title="Resolution of output image")
+chooseFileLabel = Div(text="""""")
 chooseFileButton = uploadBut()
-#processImageButton = Button(label="Process image", button_type="success")
-#refreshButton = Button(label="refresh", button_type="success")
+changeTresholdButton = Button(label="change Threshold", button_type="primary")
+changeTresholdButton.on_click(callbackTreshold)
+changeResolutionButton = Button(label="change Resolution", button_type="primary")
+changeResolutionButton.on_click(callbackSize)
 
 showImageOrig = bp.Figure(plot_width=int(simulation['sizeX']), plot_height=int(simulation['sizeY']), title="Original image", name="original")
 showImageOrig.toolbar.logo = None
@@ -497,10 +497,5 @@ tab1 = imageTab()
 tab3 = setupSimulation(simulation, image, arms)
 #tab4 = loggingTab()
 tabs = Tabs(tabs = [tab1, tab3], sizing_mode='scale_width')
-layout = column(children=[button, tabs], sizing_mode='scale_width', name='mainLayout')
+layout = column(children=[row(button, resetButton), tabs], sizing_mode='scale_width', name='mainLayout')
 curdoc().add_root(layout)
-#curdoc().add_root(column(children=[header, tabs], sizing_mode='scale_width', name='mainLayout'))
-### drawing process starts here:
-#curdoc().add_periodic_callback(update, 1000)
-
-#test()
