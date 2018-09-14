@@ -1,42 +1,58 @@
-
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
-drawing-robot-headless
-invoke with 'bokeh serve --show drawing-robot-headless' and open in browser (localhost:5006)
+drawing-robot
+
+invoke with 'bokeh serve --show drawing-robot-headless' and open
+in browser (localhost:5006)
 """
 
 ### libraries
 # external
+import base64
+import os
+import shutil
 import string
-from random import choice
 import pandas as pd
-from bokeh.models import ColumnDataSource, CustomJS
 import configparser # for importing config file
 import bokeh.plotting as bp
+from random import choice
+from io import BytesIO
+from time import sleep
+from bokeh.models import ColumnDataSource, CustomJS
 from bokeh.events import ButtonClick
 from bokeh.io import curdoc
 from bokeh.models import Panel, Button, Range1d, Plot
 from bokeh.models.widgets import Tabs, Div, TextInput, Select, Slider, PreText
 from bokeh.layouts import column, row, WidgetBox
-from time import sleep
-# own stuff:
-#from fileUpload import *
-from helper import *
-from imageProcessor.imageProcessor import *
-from simulator.simulator import *
-from raspiRobot.raspiRobot import *
 
-from io import BytesIO
-import base64
-import os
-import shutil
+# own stuff:
+from helper import get_angles
+from helper import find_pixel
+from helper import find_adjacent_pixel
+from imageProcessor.imageProcessor import open_image
+from imageProcessor.imageProcessor import detect_edges
+from imageProcessor.imageProcessor import invert_images
+from imageProcessor.imageProcessor import resize_image
+from imageProcessor.imageProcessor import save_file
+from imageProcessor.imageProcessor import image_as_array
+from simulator.simulator import set_up_simulation
+from simulator.simulator import update_simulation_background
+from simulator.simulator import move_arms
+from simulator.simulator import draw_new_line
+from simulator.simulator import append_line
+from simulator.simulator import draw_pixel
+# from raspiRobot.raspiRobot import move_pen
+# from raspiRobot.raspiRobot import set_up_raspi
+# from raspiRobot.raspiRobot import set_angle
+# from raspiRobot.raspiRobot import calibrate
+
+
 file_source = ColumnDataSource({'file_contents':[], 'file_name':[]})
 
 ### reading variables from config file:
 config = configparser.ConfigParser()
-# config.optionxform = lambda option: option # otherwise its lowercase only <- don't need?
 config.read('drawing-robot/config.ini')
 # general:
 debug = config['general'].getboolean('debug')
@@ -79,67 +95,86 @@ penColor = config['simulator']['penColor']
 animateArms = config['simulator'].getboolean('animateArms')
 
 ### setting up some meaningful dictionaries:
-arms = {'innerArmLength':innerArmLength, 'innerArmAngleRad':0, 'innerArmAngleDeg':0, 'innerArmChannel':innerArmChannel,
-            'innerArmActuationRange':innerArmActuationRange, 'innerArmMinPulse':innerArmMinPulse, 'innerArmMaxPulse':innerArmMaxPulse,
-       'outerArmLength':outerArmLength, 'outerArmAngleRad':0, 'innerArmAngleDeg':0, 'outerArmChannel':outerArmChannel,
-            'outerArmActuationRange':outerArmActuationRange, 'outerArmMinPulse':outerArmMinPulse, 'outerArmMaxPulse':outerArmMaxPulse,
-       'penUpAngle':penUpAngle, 'penDownAngle':penDownAngle,'penChannel':penChannel,
-       'armLength': innerArmLength + outerArmLength}
+arms = {'innerArmLength':innerArmLength,
+        'innerArmAngleRad':0,
+        'innerArmAngleDeg':0,
+        'innerArmChannel':innerArmChannel,
+        'innerArmActuationRange':innerArmActuationRange,
+        'innerArmMinPulse':innerArmMinPulse,
+        'innerArmMaxPulse':innerArmMaxPulse,
+        'outerArmLength':outerArmLength,
+        'outerArmAngleRad':0,
+        'innerArmAngleDeg':0,
+        'outerArmChannel':outerArmChannel,
+        'outerArmActuationRange':outerArmActuationRange,
+        'outerArmMinPulse':outerArmMinPulse,
+        'outerArmMaxPulse':outerArmMaxPulse,
+        'penUpAngle':penUpAngle,
+        'penDownAngle':penDownAngle,
+        'penChannel':penChannel,
+        'armLength': innerArmLength + outerArmLength}
 
-image = {'inputFilename':"", 'outputFilename':outputFilename, 'treshold':treshold,
-         'originX':originX, 'originY':originY, 'edgeAlgorithm':edgeAlgorithm,
-         'lineCounter':0, 'pixelCounter':0, 'currentLineX':[], 'currentLineY':[],
-         'skipProcessing':skipProcessing, 'foundNextPixel':True, 'foundLastPixel':False,
+image = {'inputFilename':"",
+         'outputFilename':outputFilename,
+         'treshold':treshold,
+         'originX':originX,
+         'originY':originY,
+         'edgeAlgorithm':edgeAlgorithm,
+         'lineCounter':0,
+         'pixelCounter':0,
+         'currentLineX':[],
+         'currentLineY':[],
+         'skipProcessing':skipProcessing,
+         'foundNextPixel':True,
+         'foundLastPixel':False,
          'outputSize':outputSize}
 
-raspi = {'switchedOn':raspiSwitchedOn, 'frequency':frequency, 'waitTimeNear':waitTimeNear, 'waitTimeFar':waitTimeFar,
-         'waitTimePen':waitTimePen, 'calibrateOuterArm': 0, 'calibrateInnerArm': 0, 'calibratePen': 0}
+raspi = {'switchedOn':raspiSwitchedOn,
+         'frequency':frequency,
+         'waitTimeNear':waitTimeNear,
+         'waitTimeFar':waitTimeFar,
+         'waitTimePen':waitTimePen,
+         'calibrateOuterArm': 0,
+         'calibrateInnerArm': 0,
+         'calibratePen': 0}
 
-simulation = {'switchedOn':simulatorSwitchedOn, 'browser':browser, 'sizeX':sizeX, 'sizeY':sizeY,
-              'penWidth':penWidth, 'penColor':penColor, 'animateArms':animateArms,'lines':[]}
+simulation = {'switchedOn':simulatorSwitchedOn,
+              'browser':browser,
+              'sizeX':sizeX,
+              'sizeY':sizeY,
+              'penWidth':penWidth,
+              'penColor':penColor,
+              'animateArms':animateArms,
+              'lines':[]}
 
 callback_id = None
 
-### parts of browser window:
-# info tab:
-def settingsTab():
-    settingsElements = column(header,
-                  row(settingsOriginX, settingsOriginY),
-                  row(settingsInnerArmLength, settingsInnerArmActuationRange),
-                  row(settingsInnerArmMinPulse, settingsInnerArmMaxPulse),
-                  row(settingsOuterArmLength, settingsOuterArmActuationRange),
-                  row(settingsOuterArmMinPulse, settingsOuterArmMaxPulse),
-                  row(settingsPenUpAngle, settingsPenDownAngle),
-                  row(settingsWaitTimeNear, settingsWaitTimeFar),
-                  settingsWaitTimePen,
-                  headerSimulator,
-                  row(settingsSizeX,settingsSizeY),
-                  row(settingsPenWidth,settingsPenColor),
-                  settingsBrowser,
-                  row(settingsReadConfig,settingsUpdate,settingsUpdateConfig))
-    #show(widgetbox(div))
-    settings = Panel(child = settingsElements, title = "Settings")
-    return settings
-
-def callbackSize():
-    updateImageSettings()
-    name = randomChar(2)
-    im = openImage(image['inputFilename']) # open image
-    saveFile(name + '_orig.png', im)
-    res = resizeImage(im,image['outputSize']) # resize it
-    saveFile(name + '_scaledown.png', res)
-    edge = edgeDetector(res, image['edgeAlgorithm']) # detect edges
-    saveFile(name + '_edge.png', edge)
-    inv = inverter(edge) # invert result
-    saveFile(name + '_inv.png', inv) # save file
-    result = imageAsArray(name + '_inv.png', image['treshold']) # store as array
+### callback functions:
+def callback_size():
+    '''Changes size of output image.'''
+    update_image_settings()
+    name = get_random_char(2)
+    im = open_image(image['inputFilename']) # open image
+    save_file(name + '_orig.png', im)
+    res = resize_image(im,image['outputSize']) # resize it
+    save_file(name + '_scaledown.png', res)
+    edge = detect_edges(res, image['edgeAlgorithm']) # detect edges
+    save_file(name + '_edge.png', edge)
+    inv = invert_images(edge) # invert result
+    save_file(name + '_inv.png', inv) # save file
+    result = image_as_array(name + '_inv.png', image['treshold'])
     image['array'] = result
-    saveFile(name + '_result.png', result)
-    img_orig = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_orig.png']))
-    img_scaledown = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_scaledown.png']))
-    img_edge = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_edge.png']))
-    img_inv = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_inv.png']))
-    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_result.png']))
+    save_file(name + '_result.png', result)
+    img_orig = ColumnDataSource(dict(url = ['drawing-robot/static/' +
+                                            name + '_orig.png']))
+    img_scaledown = ColumnDataSource(dict(url = ['drawing-robot/static/' +
+                                                 name + '_scaledown.png']))
+    img_edge = ColumnDataSource(dict(url = ['drawing-robot/static/' +
+                                            name + '_edge.png']))
+    img_inv = ColumnDataSource(dict(url = ['drawing-robot/static/' +
+                                           name + '_inv.png']))
+    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' +
+                                              name + '_result.png']))
     #maybe this solves random name bug: ?
     #img_orig.data.update(dict(url = ['drawing-robot/static/' + name + '_orig.png']))
     showImageOrig.image_url(url='url', x=0, y=500,
@@ -163,63 +198,79 @@ def callbackSize():
         w=simulation['sizeX'],
         source=img_result)
     image['outputFilename'] = name
-    updateSimulationBackground(simulation, image)
+    update_simulation_background(simulation, image)
 
-def callbackTreshold():
-    updateImageSettings()
-    name = randomChar(2)
-    im = openImage(image['outputFilename'] + '_inv.png') # open image
-    saveFile(name + '_inv.png', im)
-    result = imageAsArray(image['outputFilename'] + '_inv.png', image['treshold']) # store as array
+def callback_treshold():
+    '''Changes threshold value of 1-bit image array.'''
+    update_image_settings()
+    name = get_random_char(2)
+    im = open_image(image['outputFilename'] + '_inv.png') # open image
+    save_file(name + '_inv.png', im)
+    result = image_as_array(image['outputFilename'] + '_inv.png',
+                            image['treshold']) # store as array
     image['array'] = result
-    #saveFile(image['outputFilename'] + '_result.png', result)
-    saveFile(name + '_result.png', result)
-    #img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' + image['outputFilename'] + '_result.png']))
-    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_result.png']))
+    #save_file(image['outputFilename'] + '_result.png', result)
+    save_file(name + '_result.png', result)
+    #img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' +
+    #                        image['outputFilename'] + '_result.png']))
+    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' +
+                                              name + '_result.png']))
     showImageResult.image_url(url='url', x=0, y=500,
-        h=float(simulation['sizeX'])/float(result.shape[0])*float(result.shape[1]),
+        h=float(simulation['sizeX'])/float(result.shape[0])*
+            float(result.shape[1]),
         w=simulation['sizeX'],
         source=img_result)
     image['outputFilename'] = name
-    updateSimulationBackground(simulation, image)
+    update_simulation_background(simulation, image)
 
-def callbackCalibrateOuterArmButton():
+def callback_calibrate_outer_arm():
+    '''Drives outer arm to predefined positions.'''
     raspi['calibrateOuterArm'] += 1
     if raspi['calibrateOuterArm'] == 1:
         calibrate(arms, raspi, "outerArm", 45)
-        calibrateInfo.text = """outerArm moved to 45deg, check if angle is right and press button again!"""
+        calibrateInfo.text = """outerArm moved to 45deg,
+        check if angle is right and press button again!"""
     if raspi['calibrateOuterArm'] == 2:
         calibrate(arms, raspi, "outerArm", 90)
-        calibrateInfo.text = """outerArm moved to 90deg, check if angle is right and press button again!"""
+        calibrateInfo.text = """outerArm moved to 90deg,
+        check if angle is right and press button again!"""
     if raspi['calibrateOuterArm'] == 3:
         calibrate(arms, raspi, "outerArm", 180)
-        calibrateInfo.text = """outerArm moved to 180deg, check if angle is right and press button again!"""
+        calibrateInfo.text = """outerArm moved to 180deg,
+        check if angle is right and press button again!"""
     if raspi['calibrateOuterArm'] == 4:
         raspi['calibrateOuterArm'] = 0
         calibrate(arms, raspi, "outerArm", 90)
-        calibrateInfo.text = """outerArm moved to 90deg, calibration procedure done.
-Adjust outerArmMinPulse and outerArmMaxPulse
-and redo procedure until angles are good!"""
+        calibrateInfo.text = """outerArm moved to 90deg,
+        calibration procedure done.
+        Adjust outerArmMinPulse and outerArmMaxPulse
+        and redo procedure until angles are good!"""
 
-def callbackCalibrateInnerArmButton():
-        raspi['calibrateInnerArm'] += 1
-        if raspi['calibrateInnerArm'] == 1:
-            calibrate(arms, raspi, "innerArm", 0)
-            calibrateInfo.text = """innerArm moved to 0deg, check if angle is right and press button again!"""
-        if raspi['calibrateInnerArm'] == 2:
-            calibrate(arms, raspi, "innerArm", 90)
-            calibrateInfo.text = """innerArm moved to 90deg, check if angle is right and press button again!"""
-        if raspi['calibrateInnerArm'] == 3:
-            calibrate(arms, raspi, "innerArm", 180)
-            calibrateInfo.text = """innerArm moved to 180deg, check if angle is right and press button again!"""
-        if raspi['calibrateInnerArm'] == 4:
-            raspi['calibrateInnerArm'] = 0
-            calibrate(arms, raspi, "innerArm", 90)
-            calibrateInfo.text = """innerArm moved to 90deg, calibration procedure done.
-    Adjust innerArmMinPulse and innerArmMaxPulse
-    and redo procedure until angles are good!"""
+def callback_calibrate_inner_arm():
+    '''Drives inner arm to predefined positions.'''
+    raspi['calibrateInnerArm'] += 1
+    if raspi['calibrateInnerArm'] == 1:
+        calibrate(arms, raspi, "innerArm", 0)
+        calibrateInfo.text = """innerArm moved to 0deg,
+        check if angle is right and press button again!"""
+    if raspi['calibrateInnerArm'] == 2:
+        calibrate(arms, raspi, "innerArm", 90)
+        calibrateInfo.text = """innerArm moved to 90deg,
+        check if angle is right and press button again!"""
+    if raspi['calibrateInnerArm'] == 3:
+        calibrate(arms, raspi, "innerArm", 180)
+        calibrateInfo.text = """innerArm moved to 180deg,
+        check if angle is right and press button again!"""
+    if raspi['calibrateInnerArm'] == 4:
+        raspi['calibrateInnerArm'] = 0
+        calibrate(arms, raspi, "innerArm", 90)
+        calibrateInfo.text = """innerArm moved to 90deg,
+        calibration procedure done.
+        Adjust innerArmMinPulse and innerArmMaxPulse
+        and redo procedure until angles are good!"""
 
-def callbackCalibratePenButton():
+def callback_calibrate_pen():
+    '''Moves pen up an down to check angles.'''
     raspi['calibratePen'] += 1
     if raspi['calibratePen'] == 1:
         calibrate(arms, raspi, "pen", 110, "down")
@@ -230,7 +281,8 @@ def callbackCalibratePenButton():
     if raspi['calibratePen'] == 3:
         raspi['calibratePen'] = 0
 
-def callbackUpdateCalibration():
+def callback_update_calibration():
+    '''Updates robot arm settings.'''
     arms['innerArmMinPulse'] = calibrateInnerArmMinPulseSlider.value
     arms['innerArmMaxPulse'] = calibrateInnerArmMaxPulseSlider.value
     arms['outerArmMinPulse'] = calibrateOuterArmMinPulseSlider.value
@@ -238,30 +290,36 @@ def callbackUpdateCalibration():
     arms['penDownAngle'] = calibratePenDownAngleSlider.value
     arms['penUpAngle'] = calibratePenUpAngleSlider.value
     calibrateInfo.text = """Calibration values updated!"""
-    print(arms)
 
-def callbackWriteConfig():
+def callback_write_config():
+    '''Writes values from web interface back to config file.'''
     print('config will be written now!')
 
-def callbackAlgorithm():
-    print('callback algorithm')
-    updateImageSettings()
-    name = randomChar(2)
-    im = openImage(image['outputFilename'] + '_scaledown.png') # open image
-    saveFile(name + '_scaledown.png', im)
-    edge = edgeDetector(im, str(image['edgeAlgorithm'])) # detect edges
-    saveFile(name + '_edge.png', edge)
-    inv = inverter(edge) # invert result
-    saveFile(name + '_inv.png', inv) # save file
-    result = imageAsArray(name + '_inv.png', image['treshold']) # store as array
+def callback_algorithm():
+    '''Does edge calculation after changing the algorithm.'''
+    update_image_settings()
+    name = get_random_char(2)
+    im = open_image(image['outputFilename'] + '_scaledown.png') # open image
+    save_file(name + '_scaledown.png', im)
+    edge = detect_edges(im, str(image['edgeAlgorithm'])) # detect edges
+    save_file(name + '_edge.png', edge)
+    inv = invert_images(edge) # invert result
+    save_file(name + '_inv.png', inv) # save file
+    result = image_as_array(name + '_inv.png', image['treshold'])
     image['array'] = result
-    saveFile(name + '_result.png', result)
-    img_orig = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_orig.png']))
-    img_scaledown = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_scaledown.png']))
-    img_edge = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_edge.png']))
-    img_inv = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_inv.png']))
-    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_result.png']))
-    img_orig.data.update(dict(url = ['drawing-robot/static/' + name + '_orig.png']))
+    save_file(name + '_result.png', result)
+    img_orig = ColumnDataSource(dict(url = ['drawing-robot/static/' +
+                                            name + '_orig.png']))
+    img_scaledown = ColumnDataSource(dict(url = ['drawing-robot/static/' +
+                                                 name + '_scaledown.png']))
+    img_edge = ColumnDataSource(dict(url = ['drawing-robot/static/' +
+                                            name + '_edge.png']))
+    img_inv = ColumnDataSource(dict(url = ['drawing-robot/static/' +
+                                           name + '_inv.png']))
+    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' +
+                                              name + '_result.png']))
+    img_orig.data.update(dict(url = ['drawing-robot/static/' +
+                                     name + '_orig.png']))
     showImageOrig.image_url(url='url', x=0, y=500,
         h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
         w=simulation['sizeX'],
@@ -283,10 +341,11 @@ def callbackAlgorithm():
         w=simulation['sizeX'],
         source=img_result)
     image['outputFilename'] = name
-    updateSimulationBackground(simulation, image)
+    update_simulation_background(simulation, image)
 
 
-def callbackFile(attr,old,new):
+def callback_file_upload(attr,old,new):
+    '''Handles file upload.'''
     raw_contents = file_source.data['file_contents'][0]
     # remove the prefix that JS adds
     prefix, b64_contents = raw_contents.split(",", 1)
@@ -297,28 +356,34 @@ def callbackFile(attr,old,new):
     with open(filepath, 'wb') as f:
         shutil.copyfileobj(file_io, f)
     image['inputFilename'] = settingsInputFilename.value
-    updateImageSettings()
+    update_image_settings()
     #save settings before!
-    name = randomChar(2)
+    name = get_random_char(2)
     #name = image['inputFilename']
     print('Image name on hard disk:',name)
-    im = openImage(image['inputFilename']) # open image
-    saveFile(name + '_orig.png', im)
-    res = resizeImage(im,image['outputSize']) # resize it
-    saveFile(name + '_scaledown.png', res)
-    edge = edgeDetector(res, str(image['edgeAlgorithm'])) # detect edges
-    saveFile(name + '_edge.png', edge)
-    inv = inverter(edge) # invert result
-    saveFile(name + '_inv.png', inv) # save file
-    result = imageAsArray(name + '_inv.png', image['treshold']) # store as array
+    im = open_image(image['inputFilename']) # open image
+    save_file(name + '_orig.png', im)
+    res = resize_image(im,image['outputSize']) # resize it
+    save_file(name + '_scaledown.png', res)
+    edge = detect_edges(res, str(image['edgeAlgorithm'])) # detect edges
+    save_file(name + '_edge.png', edge)
+    inv = invert_images(edge) # invert result
+    save_file(name + '_inv.png', inv) # save file
+    result = image_as_array(name + '_inv.png', image['treshold'])
     image['array'] = result
-    saveFile(name + '_result.png', result)
-    img_orig = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_orig.png']))
-    img_scaledown = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_scaledown.png']))
-    img_edge = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_edge.png']))
-    img_inv = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_inv.png']))
-    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' + name + '_result.png']))
-    img_orig.data.update(dict(url = ['drawing-robot/static/' + name + '_orig.png']))
+    save_file(name + '_result.png', result)
+    img_orig = ColumnDataSource(dict(url = ['drawing-robot/static/' +
+                                    name + '_orig.png']))
+    img_scaledown = ColumnDataSource(dict(url = ['drawing-robot/static/' +
+                                    name + '_scaledown.png']))
+    img_edge = ColumnDataSource(dict(url = ['drawing-robot/static/' +
+                                    name + '_edge.png']))
+    img_inv = ColumnDataSource(dict(url = ['drawing-robot/static/' +
+                                    name + '_inv.png']))
+    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' +
+                                    name + '_result.png']))
+    img_orig.data.update(dict(url = ['drawing-robot/static/' +
+                                    name + '_orig.png']))
     showImageOrig.image_url(url='url', x=0, y=500,
         h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
         w=simulation['sizeX'],
@@ -340,10 +405,10 @@ def callbackFile(attr,old,new):
         w=simulation['sizeX'],
         source=img_result)
     image['outputFilename'] = name
-    updateSimulationBackground(simulation, image)
+    update_simulation_background(simulation, image)
 
-### what to do if start button is clicked:
-def callbackStartButton():
+def callback_start():
+    '''Starts/stops the drawing process.'''
     global callback_id
     if button.label == 'Start':
         button.label = 'Stop'
@@ -354,10 +419,8 @@ def callbackStartButton():
         button.button_type = 'success'
         curdoc().remove_periodic_callback(callback_id)
 
-def callbackResetButton():
-    print('reset does not work yet')
-
-def updateImageSettings():
+def update_image_settings():
+    '''Reads image settings from web interface and updates dictionary.'''
     image['scale'] = float(imageScaleFactor) * float(image['array'].shape[0]) / float(arms['armLength'])
     image['width'] = image['array'].shape[0]/image['scale']
     image['height'] = image['array'].shape[1]/image['scale']
@@ -366,9 +429,9 @@ def updateImageSettings():
     image['edgeAlgorithm'] = str(settingsAlgorithm.value)
     image['outputSize'] = int(settingsOutputSize.value)
 
-def uploadBut():
-    file_source.on_change('data', callbackFile)
-
+def upload_button():
+    '''Handles file selection via JavaScript.'''
+    file_source.on_change('data', callback_file_upload)
     button = Button(label="Choose file..", width = 500)
     button.callback = CustomJS(args=dict(file_source=file_source), code = """
     function read_file(filename) {
@@ -381,7 +444,8 @@ def uploadBut():
 
     function load_handler(event) {
         var b64string = event.target.result;
-        file_source.data = {'file_contents' : [b64string], 'file_name':[input.files[0].name]};
+        file_source.data = {'file_contents' : [b64string],
+            'file_name':[input.files[0].name]};
         file_source.trigger("change");
     }
 
@@ -404,92 +468,126 @@ def uploadBut():
     """)
     return button
 
-def imageTab():
+### parts of browser window:
+def tab_settings():
+    '''Defines the settings tab in the web interface.'''
+    settingsElements = column(header,
+                  row(settingsOriginX, settingsOriginY),
+                  row(settingsInnerArmLength, settingsInnerArmActuationRange),
+                  row(settingsInnerArmMinPulse, settingsInnerArmMaxPulse),
+                  row(settingsOuterArmLength, settingsOuterArmActuationRange),
+                  row(settingsOuterArmMinPulse, settingsOuterArmMaxPulse),
+                  row(settingsPenUpAngle, settingsPenDownAngle),
+                  row(settingsWaitTimeNear, settingsWaitTimeFar),
+                  settingsWaitTimePen,
+                  headerSimulator,
+                  row(settingsSizeX,settingsSizeY),
+                  row(settingsPenWidth,settingsPenColor),
+                  settingsBrowser,
+                  row(settingsReadConfig,settingsUpdate,settingsUpdateConfig))
+    #show(widgetbox(div))
+    settings = Panel(child = settingsElements, title = "Settings")
+    return settings
+
+def tab_image():
+    '''Defines the image tab in the web interface.'''
     imageTabElements = column(
-                row(column(chooseFileLabel,chooseFileButton), settingsInputFilename),
+                row(column(chooseFileLabel,chooseFileButton),
+                    settingsInputFilename),
                 #row(settingsInputFilename, settingsOutputFilename),
                 #settingsOutputSize,
                 #row(settingsEdgeAlgorithm,settingsTreshold),
                 #row(processImageButton,refreshButton),
                 row(settingsOutputSize, settingsTreshold, settingsAlgorithm),
-                row(changeResolutionButton, changeTresholdButton, changeAlgorithmButton),
+                row(changeResolutionButton, changeTresholdButton,
+                    changeAlgorithmButton),
                 showImageResult,
                 showImageOrig,
                 showImageResize,
                 showImageEdge,
                 showImageInv)
-    tabImage = Panel(child = imageTabElements, title = "Image processing", name = "imagetab")
+    tabImage = Panel(child = imageTabElements, title = "Image processing",
+                                               name = "imagetab")
     return tabImage
 
-def calibrationTab():
+def tab_calibration():
+    '''Defines the calibration tab in the web interface.'''
     calibrationTabElements = column(
         row(calibrateInnerArmMinPulseSlider, calibrateInnerArmMaxPulseSlider),
         row(calibrateOuterArmMinPulseSlider, calibrateOuterArmMaxPulseSlider),
         row(calibratePenDownAngleSlider, calibratePenUpAngleSlider),
-        row(calibrateInnerArmButton, calibrateOuterArmButton, calibratePenButton),
+        row(calibrateInnerArmButton, calibrateOuterArmButton,
+            calibratePenButton),
         row(calibrateUpdateButton, calibrateWriteConfigButton),
         calibrateInfo
     )
-    tabCalibration = Panel(child = calibrationTabElements, title = 'Calibration', name = 'calibrationtab')
+    tabCalibration = Panel(child = calibrationTabElements,
+                           title = 'Calibration', name = 'calibrationtab')
     return tabCalibration
 
-def randomChar(y):
-    return ''.join(choice(string.ascii_letters) for x in range(y))
-
-# RasPi tab
-def loggingTab():
+def tab_logging():
+    '''Defines the logging tab in the web interface.'''
     info = Div(text="""<img src="drawing-robot/static/out_orig.png">""")
     tabRaspi = Panel(child = info, title = "Logging informations")
     return tabRaspi
 
-### drawing function
-def drawLine(image, arms, raspi):
-    findPixel(image) # looking for the first pixel in image, sets image['foundNextPixel']
+def get_random_char(y):
+    '''Gives back a number of random chars.'''
+    return ''.join(choice(string.ascii_letters) for x in range(y))
+
+def draw_line(image, arms, raspi):
+    '''This is the main drawing function which is draws the image in the
+    simulator and in the real world.'''
+    # looking for the first pixel in image, sets image['foundNextPixel']:
+    find_pixel(image)
     if image['foundNextPixel']:
         image['lineCounter'] += 1 # linecounter +1
-        getAngles(image, arms) # calculate angles of robot arms
+        get_angles(image, arms) # calculate angles of robot arms
         if arms['innerArmAngleDeg'] != 0 and arms['outerArmAngleDeg'] != 0:
             if simulation['switchedOn']:
-                newLine(simulation, image)
+                draw_new_line(simulation, image)
                 if simulation['animateArms']:
-                    moveArms(arms, simulation)
+                    move_arms(arms, simulation)
             if raspi['switchedOn']:
-                setAngle(arms,raspi, 'far')
-                movePen(arms, raspi, 'down')
-            findAdjacentPixel(image)
+                set_angle(arms,raspi, 'far')
+                move_pen(arms, raspi, 'down')
+            find_adjacent_pixel(image)
             if (not image['foundNextPixel']) and simulation['switchedOn']:
-                drawPixel(simulation, image)
+                draw_pixel(simulation, image)
             while image['foundNextPixel']:
-                getAngles(image, arms)
+                get_angles(image, arms)
                 if arms['innerArmAngleDeg'] != 0 and arms['outerArmAngleDeg'] != 0:
                     if simulation['switchedOn']:
                         image['currentLineX'].append(image['currentX'])
                         image['currentLineY'].append(image['currentY'])
                         if simulation['animateArms']:
-                            moveArms(arms, simulation)
-                        appendLine(simulation, image)
+                            move_arms(arms, simulation)
+                        append_line(simulation, image)
                     if raspi['switchedOn']:
-                        setAngle(arms,raspi,'near')
-                    findAdjacentPixel(image)
+                        set_angle(arms,raspi,'near')
+                    find_adjacent_pixel(image)
         print('finished drawing line ', image['lineCounter'])
 
     else:
         # hurray, we finished drawing
-        print('Done drawing ', image['pixelCounter'], ' pixel in ', image['lineCounter'], 'lines.')
+        print('Done drawing ', image['pixelCounter'], ' pixel in ',
+                image['lineCounter'], 'lines.')
         # delete variables in dictionary:
-        image['currentX'] = image['currentY'] = image['currentXInArray'] = image['currentYInArray'] = False
+        image['currentX'] = image['currentY'] = False
+        image['currentXInArray'] = image['currentYInArray'] = False
         image['currentLineX'] = image['currentLineY'] = []
-        callbackStartButton() # stop autorefresh
+        callback_start() # stop autorefresh
         return
 
 ### what to be one once the browser window is updated:
 def update():
-    drawLine(image, arms, raspi)
+    '''Function is invoked by periodic callback.'''
+    draw_line(image, arms, raspi)
     if raspi['switchedOn']:
-        movePen(arms, raspi, 'up')
+        move_pen(arms, raspi, 'up')
 
 ### populating image dictionary:
-image['array'] = imageAsArray('out_result.png', image['treshold'])
+image['array'] = image_as_array('out_result.png', image['treshold'])
 image['scale'] = float(imageScaleFactor) * float(image['array'].shape[0]) / float(arms['armLength'])
 image['width'] = image['array'].shape[0]/image['scale']
 image['height'] = image['array'].shape[1]/image['scale']
@@ -497,36 +595,40 @@ image['currentXInArray'] = image['currentYInArray'] = False
 
 ### behaviour of start and reset button:
 button = Button(label='Start', button_type='success')
-button.on_click(callbackStartButton)
-resetButton = Button(label='Reset', button_type='danger')
-resetButton.on_click(callbackResetButton)
+button.on_click(callback_start)
 
 
 ### UI elements
 # UI elements for image tab:
-settingsImageScale = TextInput(value=str(imageScaleFactor), title="Image scale:")
-#settingsOutputFilename = TextInput(value=str(image['outputFilename']), title="Filename of output file:")
-settingsInputFilename = TextInput(value=str(image['inputFilename']), title="Filename of input file:")
+settingsImageScale = TextInput(value=str(imageScaleFactor),
+                               title="Image scale:")
+settingsInputFilename = TextInput(value=str(image['inputFilename']),
+                                  title="Filename of input file:")
 settingsTreshold = Slider(start=0, end=1, value=0.8, step=.01,
                       title="Threshold for conversion to black & white")
 settingsOriginX = TextInput(value=str(image['originX']), title="Origin x:")
 settingsOriginY = TextInput(value=str(image['originY']), title="Origin y:")
-#settingsEdgeAlgorithm = MultiSelect(value=[str(image['edgeAlgorithm'])], title="Edgde detection algorithm:",
-                                        # options=['scharr','frangi','canny'])
-settingsOutputSize = Slider(start=50, end=500, step=10, value=image['outputSize'],
+
+settingsOutputSize = Slider(start=50, end=500, step=10,
+                            value=image['outputSize'],
                             title="Resolution of output image")
-settingsAlgorithm = Select(options = ['roberts', 'sobel', 'scharr', 'prewitt', 'canny-1', 'canny-2', 'canny-3'],
+settingsAlgorithm = Select(options = ['roberts', 'sobel', 'scharr', 'prewitt',
+                                      'canny-1', 'canny-2', 'canny-3'],
                            value=image['edgeAlgorithm'])
 chooseFileLabel = Div(text="""""")
-chooseFileButton = uploadBut()
+chooseFileButton = upload_button()
 changeTresholdButton = Button(label="Change Threshold", button_type="primary")
-changeTresholdButton.on_click(callbackTreshold)
-changeResolutionButton = Button(label="Change Resolution", button_type="primary")
-changeResolutionButton.on_click(callbackSize)
-changeAlgorithmButton = Button(label="Change Edge Algorithm", button_type="primary")
-changeAlgorithmButton.on_click(callbackAlgorithm)
+changeTresholdButton.on_click(callback_treshold)
+changeResolutionButton = Button(label="Change Resolution",
+                                button_type="primary")
+changeResolutionButton.on_click(callback_size)
+changeAlgorithmButton = Button(label="Change Edge Algorithm",
+                               button_type="primary")
+changeAlgorithmButton.on_click(callback_algorithm)
 
-showImageOrig = bp.Figure(plot_width=int(simulation['sizeX']), plot_height=int(simulation['sizeY']), title="Original image", name="original")
+showImageOrig = bp.Figure(plot_width=int(simulation['sizeX']),
+                          plot_height=int(simulation['sizeY']),
+                          title="Original image", name="original")
 showImageOrig.toolbar.logo = None
 showImageOrig.toolbar_location = None
 showImageOrig.toolbar.active_inspect = None
@@ -540,7 +642,9 @@ showImageOrig.yaxis.visible = None
 showImageOrig.xgrid.grid_line_color = None
 showImageOrig.ygrid.grid_line_color = None
 
-showImageResize = bp.Figure(plot_width=int(simulation['sizeX']), plot_height=int(simulation['sizeY']), title="Resized image")
+showImageResize = bp.Figure(plot_width=int(simulation['sizeX']),
+                            plot_height=int(simulation['sizeY']),
+                            title="Resized image")
 showImageResize.toolbar.logo = None
 showImageResize.toolbar_location = None
 showImageResize.toolbar.active_inspect = None
@@ -554,7 +658,9 @@ showImageResize.yaxis.visible = None
 showImageResize.xgrid.grid_line_color = None
 showImageResize.ygrid.grid_line_color = None
 
-showImageInv = bp.Figure(plot_width=int(simulation['sizeX']), plot_height=int(simulation['sizeY']), title="Inverted image")
+showImageInv = bp.Figure(plot_width=int(simulation['sizeX']),
+                         plot_height=int(simulation['sizeY']),
+                         title="Inverted image")
 showImageInv.toolbar.logo = None
 showImageInv.toolbar_location = None
 showImageInv.toolbar.active_inspect = None
@@ -568,7 +674,9 @@ showImageInv.yaxis.visible = None
 showImageInv.xgrid.grid_line_color = None
 showImageInv.ygrid.grid_line_color = None
 
-showImageEdge = bp.Figure(plot_width=int(simulation['sizeX']), plot_height=int(simulation['sizeY']), title="Image after edge detection")
+showImageEdge = bp.Figure(plot_width=int(simulation['sizeX']),
+                          plot_height=int(simulation['sizeY']),
+                          title="Image after edge detection")
 showImageEdge.toolbar.logo = None
 showImageEdge.toolbar_location = None
 showImageEdge.toolbar.active_inspect = None
@@ -582,8 +690,10 @@ showImageEdge.yaxis.visible = None
 showImageEdge.xgrid.grid_line_color = None
 showImageEdge.ygrid.grid_line_color = None
 
-showImageResult = bp.Figure(plot_width=int(simulation['sizeX']), plot_height=int(simulation['sizeY']),
-                            title='Image that will be drawn', sizing_mode='scale_width')
+showImageResult = bp.Figure(plot_width=int(simulation['sizeX']),
+                            plot_height=int(simulation['sizeY']),
+                            title='Image that will be drawn',
+                            sizing_mode='scale_width')
 showImageResult.toolbar.logo = None
 showImageResult.toolbar_location = None
 showImageResult.x_range=Range1d(start=0, end=simulation['sizeX'])
@@ -602,55 +712,90 @@ headerSimulator = Div(text="""<h3>Simulator</h3>""")
 
 # include checkbox for on/off
 # UI elements for robot settings:
-settingsInnerArmLength = TextInput(value=str(arms['innerArmLength']), title="Inner arm length:")
-settingsInnerArmMinPulse= TextInput(value=str(arms['innerArmMinPulse']), title="Inner arm mininum pulse:")
-settingsInnerArmMaxPulse= TextInput(value=str(arms['innerArmMaxPulse']), title="Inner arm maximum pulse:")
-settingsInnerArmActuationRange= TextInput(value=str(arms['innerArmActuationRange']), title="Inner arm actuation range:")
-settingsOuterArmLength = TextInput(value=str(arms['outerArmLength']), title="Outer arm length:")
-settingsOuterArmMinPulse= TextInput(value=str(arms['outerArmMinPulse']), title="Outer arm mininum pulse:")
-settingsOuterArmMaxPulse= TextInput(value=str(arms['outerArmMaxPulse']), title="Outer arm maximum pulse:")
-settingsOuterArmActuationRange= TextInput(value=str(arms['outerArmActuationRange']), title="Outer arm actuation range:")
-settingsPenUpAngle= TextInput(value=str(arms['penUpAngle']), title="Angle for pen up:")
-settingsPenDownAngle= TextInput(value=str(arms['penDownAngle']), title="Angle for pen down:")
-settingsWaitTimeNear= TextInput(value=str(raspi['waitTimeNear']), title="Wait time if next pixel is near:")
-settingsWaitTimeFar= TextInput(value=str(raspi['waitTimeFar']), title="Wait time if next pixel is far:")
-settingsWaitTimePen= TextInput(value=str(raspi['waitTimePen']), title="Wait time after pen movement:")
+settingsInnerArmLength = TextInput(value=str(arms['innerArmLength']),
+                                    title="Inner arm length:")
+settingsInnerArmMinPulse= TextInput(value=str(arms['innerArmMinPulse']),
+                                    title="Inner arm mininum pulse:")
+settingsInnerArmMaxPulse= TextInput(value=str(arms['innerArmMaxPulse']),
+                                    title="Inner arm maximum pulse:")
+settingsInnerArmActuationRange= TextInput(
+                                    value=str(arms['innerArmActuationRange']),
+                                    title="Inner arm actuation range:")
+settingsOuterArmLength = TextInput(value=str(arms['outerArmLength']),
+                                    title="Outer arm length:")
+settingsOuterArmMinPulse= TextInput(value=str(arms['outerArmMinPulse']),
+                                    title="Outer arm mininum pulse:")
+settingsOuterArmMaxPulse= TextInput(value=str(arms['outerArmMaxPulse']),
+                                    title="Outer arm maximum pulse:")
+settingsOuterArmActuationRange= TextInput(
+                                    value=str(arms['outerArmActuationRange']),
+                                    title="Outer arm actuation range:")
+settingsPenUpAngle= TextInput(value=str(arms['penUpAngle']),
+                                    title="Angle for pen up:")
+settingsPenDownAngle= TextInput(value=str(arms['penDownAngle']),
+                                    title="Angle for pen down:")
+settingsWaitTimeNear= TextInput(value=str(raspi['waitTimeNear']),
+                                    title="Wait time if next pixel is near:")
+settingsWaitTimeFar= TextInput(value=str(raspi['waitTimeFar']),
+                                    title="Wait time if next pixel is far:")
+settingsWaitTimePen= TextInput(value=str(raspi['waitTimePen']),
+                                    title="Wait time after pen movement:")
 # UI elements for saving / reading config:
 settingsUpdate = Button(label='Update settings', width=200)
-settingsUpdateConfig = Button(label='Update settings and write to config', width=200)
+settingsUpdateConfig = Button(label='Update settings and write to config',
+                                    width=200)
 settingsReadConfig = Button(label='Read settings from config', width=200)
 # UI elements for simulator settings:
 #include checkbox for on/off
-settingsBrowser = TextInput(value=str(simulation['browser']), title="Browser used:")
-settingsPenWidth = TextInput(value=str(simulation['penWidth']), title="Width of pen:")
-settingsPenColor = TextInput(value=str(simulation['penColor']), title="Color of pen:")
-settingsSizeX = TextInput(value=str(simulation['sizeX']), title="Width of simulation window:")
-settingsSizeY = TextInput(value=str(simulation['sizeY']), title="Height of simulation window:")
+settingsBrowser = TextInput(value=str(simulation['browser']),
+                                    title="Browser used:")
+settingsPenWidth = TextInput(value=str(simulation['penWidth']),
+                                    title="Width of pen:")
+settingsPenColor = TextInput(value=str(simulation['penColor']),
+                                    title="Color of pen:")
+settingsSizeX = TextInput(value=str(simulation['sizeX']),
+                                    title="Width of simulation window:")
+settingsSizeY = TextInput(value=str(simulation['sizeY']),
+                                    title="Height of simulation window:")
 #include checkbox for animate arms
 
 ### calibration tab objects
-calibrateUpdateButton = Button(label='Update values!', width=200, button_type='warning')
-calibrateUpdateButton.on_click(callbackUpdateCalibration)
-calibrateWriteConfigButton = Button(label='Write values to config file!', width=200, button_type='danger')
-calibrateWriteConfigButton.on_click(callbackWriteConfig)
+calibrateUpdateButton = Button(label='Update values!', width=200,
+                               button_type='warning')
+calibrateUpdateButton.on_click(callback_update_calibration)
+calibrateWriteConfigButton = Button(label='Write values to config file!',
+                                    width=200, button_type='danger')
+calibrateWriteConfigButton.on_click(callback_write_config)
 calibrateInnerArmButton = Button(label='Calibrate inner arm', width=200)
-calibrateInnerArmButton.on_click(callbackCalibrateInnerArmButton)
+calibrateInnerArmButton.on_click(callback_calibrate_inner_arm)
 calibrateOuterArmButton = Button(label='Calibrate outer arm', width=200)
-calibrateOuterArmButton.on_click(callbackCalibrateOuterArmButton)
+calibrateOuterArmButton.on_click(callback_calibrate_outer_arm)
 calibratePenButton = Button(label='Calibrate Pen position', width=200)
-calibratePenButton.on_click(callbackCalibratePenButton)
-calibrateInnerArmMinPulseSlider = Slider(start=500, end=1500, value=arms['innerArmMinPulse'] , step=10,
-                      title="inner arm minimum pulse")
-calibrateInnerArmMaxPulseSlider = Slider(start=2000, end=4000, value=arms['innerArmMaxPulse'] , step=10,
-                      title="inner arm maximum pulse")
-calibrateOuterArmMinPulseSlider = Slider(start=500, end=1500, value=arms['outerArmMinPulse'] , step=10,
-                      title="outer arm minimum pulse")
-calibrateOuterArmMaxPulseSlider = Slider(start=2000, end=4000, value=arms['outerArmMaxPulse'] , step=10,
-                      title="outer arm maximum pulse")
-calibratePenDownAngleSlider = Slider(start=0, end=180, value=arms['penDownAngle'] , step=10,
-                      title="pen down angle")
-calibratePenUpAngleSlider = Slider(start=0, end=180, value=arms['penUpAngle'] , step=10,
-                      title="pen up angle")
+calibratePenButton.on_click(callback_calibrate_pen)
+calibrateInnerArmMinPulseSlider = Slider(start=500, end=1500,
+                                         value=arms['innerArmMinPulse'],
+                                         step=10,
+                                         title="inner arm minimum pulse")
+calibrateInnerArmMaxPulseSlider = Slider(start=2000, end=4000,
+                                         value=arms['innerArmMaxPulse'],
+                                         step=10,
+                                         title="inner arm maximum pulse")
+calibrateOuterArmMinPulseSlider = Slider(start=500, end=1500,
+                                         value=arms['outerArmMinPulse'],
+                                         step=10,
+                                         title="outer arm minimum pulse")
+calibrateOuterArmMaxPulseSlider = Slider(start=2000, end=4000,
+                                         value=arms['outerArmMaxPulse'] ,
+                                         step=10,
+                                         title="outer arm maximum pulse")
+calibratePenDownAngleSlider = Slider(start=0, end=180,
+                                         value=arms['penDownAngle'],
+                                         step=10,
+                                         title="pen down angle")
+calibratePenUpAngleSlider = Slider(start=0, end=180,
+                                         value=arms['penUpAngle'],
+                                         step=10,
+                                         title="pen up angle")
 calibrateInfo = PreText(text="""information will be displayed here..""",
 width=600, height=100)
 
@@ -658,16 +803,16 @@ width=600, height=100)
 
 ### setting up raspi:
 if raspi['switchedOn']:
-    setupRaspi(arms, raspi)
+    set_up_raspi(arms, raspi)
 
 ### setting up the browser window
-tab1 = imageTab()
-#tab2 = settingsTab()
-tab3 = setupSimulation(simulation, image, arms)
-#tab4 = loggingTab()
-#tab5 = calibrationTab()
+tab1 = tab_image()
+#tab2 = tab_settings()
+tab3 = set_up_simulation(simulation, image, arms)
+#tab4 = tab_logging()
+#tab5 = tab_calibration()
 tabs = Tabs(tabs = [tab1, tab3], sizing_mode='scale_width')
-#layout = column(children=[row(button, resetButton), tabs], sizing_mode='scale_width', name='mainLayout')
-layout = column(children=[button, tabs], sizing_mode='scale_width', name='mainLayout')
+layout = column(children=[button, tabs], sizing_mode='scale_width',
+                name='mainLayout')
 curdoc().title = "Drawing Robot"
 curdoc().add_root(layout)

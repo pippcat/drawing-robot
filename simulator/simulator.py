@@ -14,7 +14,8 @@ from bokeh.models.glyphs import Ray, Line, ImageURL
 from bokeh.layouts import column
 from time import sleep
 
-def setupSimulation(simulation, image, arms):
+def set_up_simulation(simulation, image, arms):
+    '''Sets up the simulation screen.'''
     iads = ColumnDataSource(dict(x=[0], y=[0], l=[arms['innerArmLength']], a=[0], n=["innerArm"], c=["midnightblue"], w=["6"]))
     oads = ColumnDataSource(dict(x=[arms['innerArmLength']], y=[0], l=[arms['outerArmLength']],
                                  a=[0], n=["outerArm"], c=["dodgerblue"], w=["6"]))
@@ -45,11 +46,13 @@ def setupSimulation(simulation, image, arms):
     simulation['figure'] = sim
     return tab
 
-def updateSimulationBackground(simulation, image):
+def update_simulation_background(simulation, image):
+    '''Updates the simulation background image after modifying it.'''
     simulation['backgroundImageDF'].data.update(dict(url = ['drawing-robot/static/' + image['outputFilename']
                                                                                      + '_result.png']))
 
-def moveArms(arms, simulation):
+def move_arms(arms, simulation):
+    '''Moves the robot arms in the simulation during the drawing process.'''
     newInner = simulation['innerArmDataStream'].data
     newOuter = simulation['outerArmDataStream'].data
     newInner['a'] = [arms['innerArmAngleRad']]
@@ -59,18 +62,21 @@ def moveArms(arms, simulation):
     simulation['innerArmDataStream'].data = newInner
     simulation['outerArmDataStream'].data = newOuter
 
-def newLine(simulation, image):
+def draw_new_line(simulation, image):
+    '''Draws a new line in the simulator.'''
     ds = ColumnDataSource(dict(x=[image['currentX']], y=[image['currentY']]))
     newLine = Line(x="x", y="y", line_width=simulation['penWidth'], line_color=simulation['penColor'])
     simulation['lines'].append(ds)
     simulation['figure'].add_glyph(ds, newLine)
 
-def appendLine(simulation, image):
+def append_line(simulation, image):
+    '''Appends pixel to the current line in the simulator.'''
     newDS = simulation['lines'][-1].data
     newDS['x'].append(image['currentX'])
     newDS['y'].append(image['currentY'])
     simulation['lines'][-1].data = newDS
 
-def drawPixel(simulation, image):
+def draw_pixel(simulation, image):
+    '''Draws a single pixel in the simulator if there is no line.'''
     simulation['figure'].rect(x=[image['currentX']], y=[image['currentY']],
         width=.5, height=.5, line_width=0.25*simulation['penWidth'], color=simulation['penColor'])

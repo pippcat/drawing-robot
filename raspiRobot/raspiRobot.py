@@ -9,7 +9,8 @@ import busio
 import adafruit_pca9685
 import adafruit_motor.servo
 
-def setupRaspi(arms, raspi):
+def set_up_raspi(arms, raspi):
+    '''Initializes the drawing robot.'''
     i2c = busio.I2C(board.SCL, board.SDA)
     pca = adafruit_pca9685.PCA9685(i2c)
     pca.frequency = raspi['frequency']
@@ -22,8 +23,8 @@ def setupRaspi(arms, raspi):
     arms['outerArm'] = outerArm
     arms['penMotor'] = penMotor
 
-### function to set an arm to an angle:
-def setAngle(arms, raspi, distance):
+def set_angle(arms, raspi, distance):
+    '''Moves the robot arms to the right position to draw the current pixel'''
     arms['innerArm'].angle = 180 - arms['innerArmAngleDeg']
     arms['outerArm'].angle = arms['outerArmAngleDeg']
     if distance == "far":
@@ -32,8 +33,8 @@ def setAngle(arms, raspi, distance):
     if distance == "near":
         time.sleep(raspi['waitTimeNear']) # check how small it could be!
 
-### function to move penMotor up and down:
-def movePen(arms, raspi, direction):
+def move_pen(arms, raspi, direction):
+    '''Moves the pen up and down.'''
     if direction == "down":
         print("pen down!")
         arms['penMotor'].angle = arms['penDownAngle']
@@ -43,6 +44,7 @@ def movePen(arms, raspi, direction):
     time.sleep(raspi['waitTimePen']) # check how small it could be!
 
 def calibrate(arms, raspi, motor, angle, direction=False):
+    '''Can be used to check the calibration of the robot arms.'''
     print('Calibrating', motor, 'moving to', angle, 'degrees.')
     if motor == "innerArm":
         arms['innerArm'].angle = angle

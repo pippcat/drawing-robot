@@ -6,8 +6,8 @@
 import traceback
 import math
 
-### calculate the angles of the two servos:
-def getAngles(image, arms):
+def get_angles(image, arms):
+    '''calculates the angles of the two servos'''
     try:
         r_2 = image['currentX']**2 + image['currentY']**2
         l_sq = arms['innerArmLength']**2 + arms['outerArmLength']**2
@@ -33,8 +33,8 @@ def getAngles(image, arms):
         traceback.print_exc()
         return
 
-### finds the first pixel of the next line:
-def findPixel(image):
+def find_pixel(image):
+    '''finds the first pixel of the next line'''
     for ix in range(image['array'].shape[0]-1, 0, -1):
         for iy in range(image['array'].shape[1]-1, 0, -1):
             if image['array'][ix,iy] < 0.5:
@@ -49,8 +49,8 @@ def findPixel(image):
     image['foundLastPixel'] = True
     return
 
-### finds the next pixel in a line:
-def findAdjacentPixel(image):
+def find_adjacent_pixel(image):
+    '''finds the next pixel in a line'''
     ax=image['currentXInArray']
     for ay in range(image['currentYInArray']+1,image['currentYInArray']-2,-1):
         if image['array'][ax,ay] < 0.5:
