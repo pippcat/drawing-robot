@@ -7,6 +7,6 @@ It's designed to be run using `bokeh-serve`, which allows to upload and modify i
 
 ## Documentation
 
-- see [documentation/installation-raspbian.md](documentation/installation_raspbian.md) for infos how to set things up on a RaspberryPi (3) using a fresh Raspbian
-See [documentation/links.md](documentation/links.md) for some links related to the project.
-See [documentation/raspi-robot.md](documentation/raspi-robot.md) for more informations on setting up the Raspberry Pi.
+- See [documentation/installation-raspbian.md](documentation/installation-raspbian.md) for infos how to set things up on a RaspberryPi (3) using a fresh Raspbian.
+- See [documentation/links.md](documentation/links.md) for some links related to the project.
+- See [documentation/raspi-robot.md](documentation/raspi-robot.md) for more informations on setting up the Raspberry Pi.
