@@ -6,3 +6,5 @@
  - ::bangbang:: add installation info for PCA9685
 3. Set up WiFi
  - ::bangbang::
+4. Autostart
+ - ::bangbang::
