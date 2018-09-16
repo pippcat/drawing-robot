@@ -1,8 +1,12 @@
-Drawing robot
-=============
+# Drawing robot
 
-This project uses an arduino or raspberrypi, some servo motors and a pen to draw a picture like a human would do.
 
-Don't expect anything to work properly here, its not ready for release yet. Although you might want to try the simulator by invocing `/companion/companion.py`. You have to put the image into the `/companion/images` subfolder.
+This project uses an RaspberryPi 3, a PCA9685,  some servo motors and a pen to draw a picture like a human would do.
 
-The `arduino` folder contains the sketch to run on the arduino. The `companion` folder contains some python scripts to do image processing and calculate the movement of the robot arm.
+It's designed to be run using `bokeh-serve`, which allows to upload and modify images in the webbrowser and watch the drawing process in a simulator.
+
+## Documentation
+
+See [documentation/raspi-robot.md](documentation/raspi-robot.md) for more informations on setting up the Raspberry Pi.
+
+See [documentation/links.md](documentation/links.md) for some links related to the project.
