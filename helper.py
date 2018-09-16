@@ -5,6 +5,7 @@
 
 import traceback
 import math
+import logging
 
 def get_angles(image, arms):
     '''calculates the angles of the two servos'''
@@ -33,19 +34,24 @@ def get_angles(image, arms):
         traceback.print_exc()
         return
 
+def write_pixel_to_dict(image, x, y):
+    '''Updates image dictionary after new pixel was found.'''
+    image['pixelCounter'] += 1
+    image['array'][x,y] = 1
+    image['foundNextPixel'] = True
+    image['currentXInArray'] = x
+    image['currentYInArray'] = y
+    image['currentX'] = image['currentXInArray']/image['scale']+image['originX']
+    image['currentY'] = image['currentYInArray']/image['scale']+image['originY']
+
 def find_pixel(image):
     '''finds the first pixel of the next line'''
     for ix in range(image['array'].shape[0]-1, 0, -1):
         for iy in range(image['array'].shape[1]-1, 0, -1):
             if image['array'][ix,iy] < 0.5:
-                image['pixelCounter'] += 1
-                image['array'][ix,iy] = 1
-                image['foundNextPixel'] = True
-                image['currentXInArray'] = ix
-                image['currentYInArray'] = iy
-                image['currentX'] = image['currentXInArray']/image['scale']+image['originX']
-                image['currentY'] = image['currentYInArray']/image['scale']+image['originY']
+                write_pixel_to_dict(image, ix, iy)
                 return
+    # if for loops don't find anything, there is nothing left to draw.
     image['foundLastPixel'] = True
     return
 
@@ -54,33 +60,15 @@ def find_adjacent_pixel(image):
     ax=image['currentXInArray']
     for ay in range(image['currentYInArray']+1,image['currentYInArray']-2,-1):
         if image['array'][ax,ay] < 0.5:
-            image['pixelCounter'] += 1
-            image['array'][ax,ay] = 1
-            image['foundNextPixel'] = True
-            image['currentXInArray'] = ax
-            image['currentYInArray'] = ay
-            image['currentX'] = image['currentXInArray']/image['scale']+image['originX']
-            image['currentY'] = image['currentYInArray']/image['scale']+image['originY']
+            write_pixel_to_dict(image, ax, ay)
             return
         for ax in range(image['currentXInArray']+1,image['currentXInArray']-2,-1):
             if image['array'][ax,ay] < 0.5:
-                image['pixelCounter'] += 1
-                image['array'][ax,ay] = 1
-                image['foundNextPixel'] = True
-                image['currentXInArray'] = ax
-                image['currentYInArray'] = ay
-                image['currentX'] = image['currentXInArray']/image['scale']+image['originX']
-                image['currentY'] = image['currentYInArray']/image['scale']+image['originY']
+                write_pixel_to_dict(image, ax, ay)
                 return
     for ay in range(image['currentYInArray']-1,image['currentYInArray']+2,1):
         if image['array'][ax,ay] < 0.5:
-            image['pixelCounter'] += 1
-            image['array'][ax,ay] = 1
-            image['foundNextPixel'] = True
-            image['currentXInArray'] = ax
-            image['currentYInArray'] = ay
-            image['currentX'] = image['currentXInArray']/image['scale']+image['originX']
-            image['currentY'] = image['currentYInArray']/image['scale']+image['originY']
+            write_pixel_to_dict(image, ax, ay)
             return
     image['foundNextPixel'] = False
     return

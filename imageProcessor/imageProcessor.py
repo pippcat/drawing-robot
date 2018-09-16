@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 
+import os
+import logging
+import warnings
+import numpy as np
+import matplotlib.pyplot as plt
+from skimage import io
+from skimage import color
+from skimage import filters
+from skimage import feature
+from skimage import transform
+from PIL import Image
+
+
 def open_image(filename):
     '''Opens an image and returns it.'''
-
-    import os
-    import logging
-    import numpy as np
-    from skimage import io
 
     filepath = os.getcwd()+ '/drawing-robot/static/' + filename
     logging.info("Loading image " + filepath)
@@ -27,11 +35,6 @@ def detect_edges(imagename, algorithm):
         - canny-1
         - canny-2
         - canny-3'''
-
-    from skimage import color
-    from skimage import filters
-    from skimage import feature
-    import logging
 
     im = color.rgb2gray(imagename)  # image is colored, lets make it gray scale
     logging.info(algorithm + ' was choosen as edge detection algorithm.')
@@ -54,19 +57,15 @@ def detect_edges(imagename, algorithm):
 def invert_images(imagename):
     '''Inverts an image and returns it.'''
 
-    import numpy as np
-
+    logging.info('Inverting image.')
     inv = 1 - np.asarray(imagename)
     return inv
 
 def resize_image(source, size):
     '''Resizes an image to the given size and returns it.'''
 
-    from skimage import transform
-    import warnings
-    import logging
-
     # transform throws warnings which we'd like to supress, therefore:
+    logging.info('Resizing image.')
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         '''longer side of image will be set to size, other one is calculated
@@ -86,10 +85,7 @@ def resize_image(source, size):
 def save_file(filename, data):
     '''Saves result as filename.png in images subfolder.'''
 
-    import numpy as np
-    import matplotlib.pyplot as plt
-    import os
-
+    logging.info('Saving file as ' + filename)
     if data.shape[0] > data.shape[1]: # rotate image if height > width
         data = np.rot90(data)
     plt.imsave(os.getcwd()+ '/drawing-robot/static/' + filename, data, cmap = plt.cm.gray)
@@ -97,11 +93,9 @@ def save_file(filename, data):
 def image_as_array(filename, threshold):
     '''Stores image as binary array, threshold can be set.'''
 
-    import numpy as np
-    import os
-    from PIL import Image
-
-    imagefile = Image.open(os.getcwd()+ '/drawing-robot/static/' + filename).convert("L") # open image and convert to grayscale
+    logging.info('Converting image to array')
+    print(filename)
+    imagefile = Image.open('drawing-robot/static/' + filename).convert("L") # open image and convert to grayscale
     imageAsArray = np.asarray(imagefile)
     imageAsArray.setflags(write=1) # it's read only by default
     for ix in range(imageAsArray.shape[0]):

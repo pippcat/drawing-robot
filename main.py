@@ -44,7 +44,6 @@ from simulator.simulator import update_simulation_background
 from simulator.simulator import move_arms
 from simulator.simulator import draw_new_line
 from simulator.simulator import append_line
-from simulator.simulator import draw_pixel
 # from raspiRobot.raspiRobot import move_pen
 # from raspiRobot.raspiRobot import set_up_raspi
 # from raspiRobot.raspiRobot import set_angle
@@ -151,16 +150,18 @@ simulation = {'switchedOn':simulatorSwitchedOn,
               'penWidth':penWidth,
               'penColor':penColor,
               'animateArms':animateArms,
-              'lines':[]}
+              'lines':[],
+              'figure': False}
 
 # needed for periodic callbacks:
 callback_id = None
 
 ### callback functions:
-def callback_size():
-    '''Changes size of output image.'''
+def callback_modify_output_image():
+    '''Updates image settings and reruns output image generation.'''
     update_image_settings()
     name = get_random_char(2)
+    logging.info('New output image name on hard disk:' + str(name))
     im = open_image(image['inputFilename']) # open image
     save_file(name + '_orig.png', im)
     res = resize_image(im,image['outputSize']) # resize it
@@ -205,30 +206,24 @@ def callback_size():
         w=simulation['sizeX'],
         source=img_result)
     image['outputFilename'] = name
+    update_image_dict()
     update_simulation_background(simulation, image)
+    image['lineCounter'] = 0
+    image['pixelCounter'] = 0
 
-def callback_treshold():
-    '''Changes threshold value of 1-bit image array.'''
-    update_image_settings()
-    name = get_random_char(2)
-    im = open_image(image['outputFilename'] + '_inv.png') # open image
-    save_file(name + '_inv.png', im)
-    result = image_as_array(image['outputFilename'] + '_inv.png',
-                            image['treshold']) # store as array
-    image['array'] = result
-    #save_file(image['outputFilename'] + '_result.png', result)
-    save_file(name + '_result.png', result)
-    #img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' +
-    #                        image['outputFilename'] + '_result.png']))
-    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' +
-                                              name + '_result.png']))
-    showImageResult.image_url(url='url', x=0, y=500,
-        h=float(simulation['sizeX'])/float(result.shape[0])*
-            float(result.shape[1]),
-        w=simulation['sizeX'],
-        source=img_result)
-    image['outputFilename'] = name
-    update_simulation_background(simulation, image)
+def callback_file_upload(attr,old,new):
+    '''Handles file upload.'''
+    raw_contents = file_source.data['file_contents'][0]
+    # remove the prefix that JS adds
+    prefix, b64_contents = raw_contents.split(",", 1)
+    file_contents = base64.b64decode(b64_contents)
+    file_io = BytesIO(file_contents)
+    filepath = 'drawing-robot/static/' + file_source.data['file_name'][-1]
+    settingsInputFilename.update(value=file_source.data['file_name'][-1])
+    with open(filepath, 'wb') as f:
+        shutil.copyfileobj(file_io, f)
+    image['inputFilename'] = settingsInputFilename.value
+    callback_modify_output_image()
 
 def callback_calibrate_outer_arm():
     '''Drives outer arm to predefined positions.'''
@@ -302,118 +297,6 @@ def callback_write_config():
     '''Writes values from web interface back to config file.'''
     print('config will be written now!')
 
-def callback_algorithm():
-    '''Does edge calculation after changing the algorithm.'''
-    update_image_settings()
-    name = get_random_char(2)
-    im = open_image(image['outputFilename'] + '_scaledown.png') # open image
-    save_file(name + '_scaledown.png', im)
-    edge = detect_edges(im, str(image['edgeAlgorithm'])) # detect edges
-    save_file(name + '_edge.png', edge)
-    inv = invert_images(edge) # invert result
-    save_file(name + '_inv.png', inv) # save file
-    result = image_as_array(name + '_inv.png', image['treshold'])
-    image['array'] = result
-    save_file(name + '_result.png', result)
-    img_orig = ColumnDataSource(dict(url = ['drawing-robot/static/' +
-                                            name + '_orig.png']))
-    img_scaledown = ColumnDataSource(dict(url = ['drawing-robot/static/' +
-                                                 name + '_scaledown.png']))
-    img_edge = ColumnDataSource(dict(url = ['drawing-robot/static/' +
-                                            name + '_edge.png']))
-    img_inv = ColumnDataSource(dict(url = ['drawing-robot/static/' +
-                                           name + '_inv.png']))
-    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' +
-                                              name + '_result.png']))
-    img_orig.data.update(dict(url = ['drawing-robot/static/' +
-                                     name + '_orig.png']))
-    showImageOrig.image_url(url='url', x=0, y=500,
-        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
-        w=simulation['sizeX'],
-        source=img_orig)
-    showImageResize.image_url(url='url', x=0, y=500,
-        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
-        w=simulation['sizeX'],
-        source=img_scaledown)
-    showImageEdge.image_url(url='url', x=0, y=500,
-        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
-        w=simulation['sizeX'],
-        source=img_edge)
-    showImageInv.image_url(url='url', x=0, y=500,
-        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
-        w=simulation['sizeX'],
-        source=img_inv)
-    showImageResult.image_url(url='url', x=0, y=500,
-        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
-        w=simulation['sizeX'],
-        source=img_result)
-    image['outputFilename'] = name
-    update_simulation_background(simulation, image)
-
-
-def callback_file_upload(attr,old,new):
-    '''Handles file upload.'''
-    raw_contents = file_source.data['file_contents'][0]
-    # remove the prefix that JS adds
-    prefix, b64_contents = raw_contents.split(",", 1)
-    file_contents = base64.b64decode(b64_contents)
-    file_io = BytesIO(file_contents)
-    filepath = 'drawing-robot/static/' + file_source.data['file_name'][-1]
-    settingsInputFilename.update(value=file_source.data['file_name'][-1])
-    with open(filepath, 'wb') as f:
-        shutil.copyfileobj(file_io, f)
-    image['inputFilename'] = settingsInputFilename.value
-    update_image_settings()
-    #save settings before!
-    name = get_random_char(2)
-    #name = image['inputFilename']
-    logging.info('Image name on hard disk:' + str(name))
-    im = open_image(image['inputFilename']) # open image
-    save_file(name + '_orig.png', im)
-    res = resize_image(im,image['outputSize']) # resize it
-    save_file(name + '_scaledown.png', res)
-    edge = detect_edges(res, str(image['edgeAlgorithm'])) # detect edges
-    save_file(name + '_edge.png', edge)
-    inv = invert_images(edge) # invert result
-    save_file(name + '_inv.png', inv) # save file
-    result = image_as_array(name + '_inv.png', image['treshold'])
-    image['array'] = result
-    save_file(name + '_result.png', result)
-    img_orig = ColumnDataSource(dict(url = ['drawing-robot/static/' +
-                                    name + '_orig.png']))
-    img_scaledown = ColumnDataSource(dict(url = ['drawing-robot/static/' +
-                                    name + '_scaledown.png']))
-    img_edge = ColumnDataSource(dict(url = ['drawing-robot/static/' +
-                                    name + '_edge.png']))
-    img_inv = ColumnDataSource(dict(url = ['drawing-robot/static/' +
-                                    name + '_inv.png']))
-    img_result = ColumnDataSource(dict(url = ['drawing-robot/static/' +
-                                    name + '_result.png']))
-    img_orig.data.update(dict(url = ['drawing-robot/static/' +
-                                    name + '_orig.png']))
-    showImageOrig.image_url(url='url', x=0, y=500,
-        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
-        w=simulation['sizeX'],
-        source=img_orig)
-    showImageResize.image_url(url='url', x=0, y=500,
-        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
-        w=simulation['sizeX'],
-        source=img_scaledown)
-    showImageEdge.image_url(url='url', x=0, y=500,
-        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
-        w=simulation['sizeX'],
-        source=img_edge)
-    showImageInv.image_url(url='url', x=0, y=500,
-        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
-        w=simulation['sizeX'],
-        source=img_inv)
-    showImageResult.image_url(url='url', x=0, y=500,
-        h=float(simulation['sizeX'])/float(im.shape[0])*float(im.shape[1]),
-        w=simulation['sizeX'],
-        source=img_result)
-    image['outputFilename'] = name
-    update_simulation_background(simulation, image)
-
 def callback_start():
     '''Starts/stops the drawing process.'''
     global callback_id
@@ -428,13 +311,19 @@ def callback_start():
 
 def update_image_settings():
     '''Reads image settings from web interface and updates dictionary.'''
-    image['scale'] = float(imageScaleFactor) * float(image['array'].shape[0]) / float(arms['armLength'])
-    image['width'] = image['array'].shape[0]/image['scale']
-    image['height'] = image['array'].shape[1]/image['scale']
-    image['currentXInArray'] = image['currentYInArray'] = False
     image['treshold'] = float(settingsTreshold.value)
     image['edgeAlgorithm'] = str(settingsAlgorithm.value)
     image['outputSize'] = int(settingsOutputSize.value)
+
+def update_image_dict():
+    '''Updates the image dictionary.'''
+    image['array'] = image_as_array(image['outputFilename'] + '_result.png',
+                                    image['treshold'])
+    image['scale'] = (float(imageScaleFactor) * float(image['array'].shape[0])
+                      / float(arms['armLength']))
+    image['width'] = image['array'].shape[0]/image['scale']
+    image['height'] = image['array'].shape[1]/image['scale']
+    image['currentXInArray'] = image['currentYInArray'] = False
 
 def upload_button():
     '''Handles file selection via JavaScript.'''
@@ -506,8 +395,7 @@ def tab_image():
                 #row(settingsEdgeAlgorithm,settingsTreshold),
                 #row(processImageButton,refreshButton),
                 row(settingsOutputSize, settingsTreshold, settingsAlgorithm),
-                row(changeResolutionButton, changeTresholdButton,
-                    changeAlgorithmButton),
+                applyChangesButton,
                 showImageResult,
                 showImageOrig,
                 showImageResize,
@@ -567,8 +455,6 @@ def draw_line(image, arms, raspi):
             for thread in threadList:
                 thread.join()
             find_adjacent_pixel(image)
-            if (not image['foundNextPixel']) and simulation['switchedOn']:
-                draw_pixel(simulation, image)
             while image['foundNextPixel']:
                 threadList=[] # delete the old thread list
                 get_angles(image, arms)
@@ -613,11 +499,12 @@ def update():
         move_pen(arms, raspi, 'up')
 
 ### populating image dictionary:
-image['array'] = image_as_array('out_result.png', image['treshold'])
-image['scale'] = float(imageScaleFactor) * float(image['array'].shape[0]) / float(arms['armLength'])
-image['width'] = image['array'].shape[0]/image['scale']
-image['height'] = image['array'].shape[1]/image['scale']
+# image['array'] = image_as_array('out_result.png', image['treshold'])
+image['scale'] = float(imageScaleFactor) * 100 / float(arms['armLength'])
+image['width'] = 100/image['scale']
+image['height'] = 100/image['scale']
 image['currentXInArray'] = image['currentYInArray'] = False
+
 
 ### behaviour of start and reset button:
 button = Button(label='Start', button_type='success')
@@ -643,14 +530,8 @@ settingsAlgorithm = Select(options = ['roberts', 'sobel', 'scharr', 'prewitt',
                            value=image['edgeAlgorithm'])
 chooseFileLabel = Div(text="""""")
 chooseFileButton = upload_button()
-changeTresholdButton = Button(label="Change Threshold", button_type="primary")
-changeTresholdButton.on_click(callback_treshold)
-changeResolutionButton = Button(label="Change Resolution",
-                                button_type="primary")
-changeResolutionButton.on_click(callback_size)
-changeAlgorithmButton = Button(label="Change Edge Algorithm",
-                               button_type="primary")
-changeAlgorithmButton.on_click(callback_algorithm)
+applyChangesButton = Button(label="Apply changes", button_type="primary")
+applyChangesButton.on_click(callback_modify_output_image)
 
 showImageOrig = bp.Figure(plot_width=int(simulation['sizeX']),
                           plot_height=int(simulation['sizeY']),
