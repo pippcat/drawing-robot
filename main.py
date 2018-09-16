@@ -44,10 +44,7 @@ from simulator.simulator import update_simulation_background
 from simulator.simulator import move_arms
 from simulator.simulator import draw_new_line
 from simulator.simulator import append_line
-# from raspiRobot.raspiRobot import move_pen
-# from raspiRobot.raspiRobot import set_up_raspi
-# from raspiRobot.raspiRobot import set_angle
-# from raspiRobot.raspiRobot import calibrate
+# imports for raspi.robot are further down after loading of config
 
 # is needed for image import:
 file_source = ColumnDataSource({'file_contents':[], 'file_name':[]})
@@ -86,6 +83,12 @@ treshold = config['imageprocessor'].getfloat('treshold')
 outputSize = config['imageprocessor'].getint('outputSize')
 # raspi
 raspiSwitchedOn = config['raspi'].getboolean('switchedOn')
+# only include raspiRobot if activated in config:
+if raspiSwitchedOn == True:
+    from raspiRobot.raspiRobot import move_pen
+    from raspiRobot.raspiRobot import set_up_raspi
+    from raspiRobot.raspiRobot import set_angle
+    from raspiRobot.raspiRobot import calibrate
 frequency = config['raspi'].getint('frequency')
 waitTimeNear = config['raspi'].getfloat('waitTimeNear')
 waitTimeFar = config['raspi'].getfloat('waitTimeFar')
@@ -468,7 +471,7 @@ def draw_line(image, arms, raspi):
     :param arms: arms dictionary
     :param raspi: raspi dictionary
     '''
-    
+
     # looking for the first pixel in image, sets image['foundNextPixel']:
     find_pixel(image)
     threadList=[] # delete the old thread list
