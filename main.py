@@ -11,12 +11,14 @@ in browser (localhost:5006)
 ### libraries
 # external
 import base64
+import logging
 import os
 import shutil
 import string
 import pandas as pd
 import configparser # for importing config file
 import bokeh.plotting as bp
+import threading
 from random import choice
 from io import BytesIO
 from time import sleep
@@ -48,12 +50,16 @@ from simulator.simulator import draw_pixel
 # from raspiRobot.raspiRobot import set_angle
 # from raspiRobot.raspiRobot import calibrate
 
-
+# is needed for image import:
 file_source = ColumnDataSource({'file_contents':[], 'file_name':[]})
+
+# multithreading of simulator and robot:
+threadList = []
 
 ### reading variables from config file:
 config = configparser.ConfigParser()
 config.read('drawing-robot/config.ini')
+#config.read('config.ini')
 # general:
 debug = config['general'].getboolean('debug')
 originX = config['general'].getint('originX')
@@ -147,6 +153,7 @@ simulation = {'switchedOn':simulatorSwitchedOn,
               'animateArms':animateArms,
               'lines':[]}
 
+# needed for periodic callbacks:
 callback_id = None
 
 ### callback functions:
@@ -360,7 +367,7 @@ def callback_file_upload(attr,old,new):
     #save settings before!
     name = get_random_char(2)
     #name = image['inputFilename']
-    print('Image name on hard disk:',name)
+    logging.info('Image name on hard disk:' + str(name))
     im = open_image(image['inputFilename']) # open image
     save_file(name + '_orig.png', im)
     res = resize_image(im,image['outputSize']) # resize it
@@ -540,6 +547,7 @@ def draw_line(image, arms, raspi):
     simulator and in the real world.'''
     # looking for the first pixel in image, sets image['foundNextPixel']:
     find_pixel(image)
+    threadList=[] # delete the old thread list
     if image['foundNextPixel']:
         image['lineCounter'] += 1 # linecounter +1
         get_angles(image, arms) # calculate angles of robot arms
@@ -547,31 +555,49 @@ def draw_line(image, arms, raspi):
             if simulation['switchedOn']:
                 draw_new_line(simulation, image)
                 if simulation['animateArms']:
-                    move_arms(arms, simulation)
+                    moveArmsThread = threading.Thread(move_arms(arms, simulation))
+                    threadList.append(moveArmsThread)
+                    #move_arms(arms, simulation)
             if raspi['switchedOn']:
-                set_angle(arms,raspi, 'far')
-                move_pen(arms, raspi, 'down')
+                moveRobotThread = threading.Thread(move_then_down(arms, raspi))
+                threadList.append(moveRobotThread)
+                #move_then_down(arms,raspi)
+            for thread in threadList:
+                thread.start()
+            for thread in threadList:
+                thread.join()
             find_adjacent_pixel(image)
             if (not image['foundNextPixel']) and simulation['switchedOn']:
                 draw_pixel(simulation, image)
             while image['foundNextPixel']:
+                threadList=[] # delete the old thread list
                 get_angles(image, arms)
                 if arms['innerArmAngleDeg'] != 0 and arms['outerArmAngleDeg'] != 0:
                     if simulation['switchedOn']:
                         image['currentLineX'].append(image['currentX'])
                         image['currentLineY'].append(image['currentY'])
                         if simulation['animateArms']:
-                            move_arms(arms, simulation)
-                        append_line(simulation, image)
+                            moveArmsThread = threading.Thread(move_arms(arms, simulation))
+                            threadList.append(moveArmsThread)
+                            #move_arms(arms, simulation)
+                        appendLineThread = threading.Thread(append_line(simulation, image))
+                        threadList.append(appendLineThread)
+                        #append_line(simulation, image)
                     if raspi['switchedOn']:
-                        set_angle(arms,raspi,'near')
+                        moveRobotThread = threading.Thread(move_then_down(arms, raspi))
+                        threadList.append(moveRobotThread)
+                        #set_angle(arms,raspi,'near')
                     find_adjacent_pixel(image)
-        print('finished drawing line ', image['lineCounter'])
+                for thread in threadList:
+                    thread.start()
+                for thread in threadList:
+                    thread.join()
+        logging.info('finished drawing line ' + str(image['lineCounter']))
 
     else:
         # hurray, we finished drawing
-        print('Done drawing ', image['pixelCounter'], ' pixel in ',
-                image['lineCounter'], 'lines.')
+        logging.info('Done drawing ' + str(image['pixelCounter']) +
+                ' pixel in ' + str(image['lineCounter']) + ' lines.')
         # delete variables in dictionary:
         image['currentX'] = image['currentY'] = False
         image['currentXInArray'] = image['currentYInArray'] = False

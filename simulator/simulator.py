@@ -19,7 +19,6 @@ def set_up_simulation(simulation, image, arms):
     iads = ColumnDataSource(dict(x=[0], y=[0], l=[arms['innerArmLength']], a=[0], n=["innerArm"], c=["midnightblue"], w=["6"]))
     oads = ColumnDataSource(dict(x=[arms['innerArmLength']], y=[0], l=[arms['outerArmLength']],
                                  a=[0], n=["outerArm"], c=["dodgerblue"], w=["6"]))
-    #sim = bp.figure(title="Drawing Robot Simulator", width=sizeX, height=sizeY)
     sim = bp.figure(width=simulation['sizeX'], height=simulation['sizeY'],
                     x_range=(-0.25*arms['armLength'],arms['armLength']),
                     y_range=(0,1.25*arms['armLength']),

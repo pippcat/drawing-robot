@@ -28,7 +28,7 @@ def get_angles(image, arms):
         # return angles, since outer angle is always negative, shift it by 180°
         return
     except:
-        print("Not possible to calculate angles, will return (0,0)")
+        logging.warning("Not possible to calculate angles, will return (0,0)")
         arms['outerArmAngleRad'] = arms['outerArmAngleDeg'] = arms['innerArmAngleRad'] = arms['innerArmAngleDeg'] = 0
         traceback.print_exc()
         return

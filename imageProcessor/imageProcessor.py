@@ -5,12 +5,12 @@ def open_image(filename):
     '''Opens an image and returns it.'''
 
     import os
+    import logging
     import numpy as np
     from skimage import io
 
-    print(os.getcwd()+ '/drawing-robot/static/' + filename)
     filepath = os.getcwd()+ '/drawing-robot/static/' + filename
-    print("Loading image " + filepath)
+    logging.info("Loading image " + filepath)
     im = io.imread(filepath)
     if im.shape[0] < im.shape[1]: # rotate image if height > width
         im = np.rot90(im)
@@ -31,9 +31,10 @@ def detect_edges(imagename, algorithm):
     from skimage import color
     from skimage import filters
     from skimage import feature
+    import logging
 
     im = color.rgb2gray(imagename)  # image is colored, lets make it gray scale
-    print('algorithm',algorithm)
+    logging.info(algorithm + ' was choosen as edge detection algorithm.')
     if algorithm == "roberts":
         edges = filters.roberts(im)
     elif algorithm == "scharr":
@@ -63,19 +64,22 @@ def resize_image(source, size):
 
     from skimage import transform
     import warnings
+    import logging
 
     # transform throws warnings which we'd like to supress, therefore:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        if source.shape[0] > source.shape[1]: # longer side of image will be set to size, other one is calculated to keep aspect ratio constant
-            print("landscape")
+        '''longer side of image will be set to size, other one is calculated
+        to keep aspect ratio constant'''
+        if source.shape[0] > source.shape[1]:
+            logging.info("Image is in landscape format.")
             width = size
             height = int(source.shape[1]*size/source.shape[0])
         else:
-            print("portrait")
+            logging.info("Image is in portrait format.")
             width = int(source.shape[0]*size/source.shape[1])
             height = size
-        print("Resizing image. original size: " + str(source.shape[0]) + "x" + str(source.shape[1]) + "px. New size: " + str(width) + "x" + str(height) + "px.")
+        logging.info("Resizing image. original size: " + str(source.shape[0]) + "x" + str(source.shape[1]) + "px. New size: " + str(width) + "x" + str(height) + "px.")
         res = transform.resize(source, (width, height))
         return res
 

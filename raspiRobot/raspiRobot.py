@@ -4,6 +4,7 @@
 # the drawing robot, implemented for a RaspberryPi
 
 import time
+import logging
 import board
 import busio
 import adafruit_pca9685
@@ -36,16 +37,21 @@ def set_angle(arms, raspi, distance):
 def move_pen(arms, raspi, direction):
     '''Moves the pen up and down.'''
     if direction == "down":
-        print("pen down!")
+        logging.info("pen down!")
         arms['penMotor'].angle = arms['penDownAngle']
     if direction == "up":
-        print("pen up!")
+        logging.info("pen up!")
         arms['penMotor'].angle = arms['penUpAngle']
     time.sleep(raspi['waitTimePen']) # check how small it could be!
 
+def move_then_down(arms, raspi)
+    '''Moves the arm and then lowers pen.'''
+    set_angle(arms, raspi, 'far')
+    move_pen(arms, raspi, 'down')
+
 def calibrate(arms, raspi, motor, angle, direction=False):
     '''Can be used to check the calibration of the robot arms.'''
-    print('Calibrating', motor, 'moving to', angle, 'degrees.')
+    logging.info('Calibrating ' + motor + ' moving to ' + angle + ' degrees.')
     if motor == "innerArm":
         arms['innerArm'].angle = angle
     elif motor == "outerArm":
