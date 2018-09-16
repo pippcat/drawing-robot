@@ -326,7 +326,11 @@ def update_image_dict():
     image['currentXInArray'] = image['currentYInArray'] = False
 
 def upload_button():
-    '''Handles file selection via JavaScript.'''
+    '''
+    Handles file selection via JavaScript.
+
+    :returns: bokeh.models.Button
+    '''
     file_source.on_change('data', callback_file_upload)
     button = Button(label="Choose file..", width = 500)
     button.callback = CustomJS(args=dict(file_source=file_source), code = """
@@ -366,7 +370,12 @@ def upload_button():
 
 ### parts of browser window:
 def tab_settings():
-    '''Defines the settings tab in the web interface.'''
+    '''
+    Defines the settings tab in the web interface.
+
+    :returns: bokel.models.Panel
+    '''
+
     settingsElements = column(header,
                   row(settingsOriginX, settingsOriginY),
                   row(settingsInnerArmLength, settingsInnerArmActuationRange),
@@ -386,7 +395,12 @@ def tab_settings():
     return settings
 
 def tab_image():
-    '''Defines the image tab in the web interface.'''
+    '''
+    Defines the image tab in the web interface.
+
+    :returns: bokeh.models.Panel
+    '''
+
     imageTabElements = column(
                 row(column(chooseFileLabel,chooseFileButton),
                     settingsInputFilename),
@@ -406,7 +420,12 @@ def tab_image():
     return tabImage
 
 def tab_calibration():
-    '''Defines the calibration tab in the web interface.'''
+    '''
+    Defines the calibration tab in the web interface.
+
+    :returns: bokeh.models.Panel
+    '''
+
     calibrationTabElements = column(
         row(calibrateInnerArmMinPulseSlider, calibrateInnerArmMaxPulseSlider),
         row(calibrateOuterArmMinPulseSlider, calibrateOuterArmMaxPulseSlider),
@@ -421,18 +440,35 @@ def tab_calibration():
     return tabCalibration
 
 def tab_logging():
-    '''Defines the logging tab in the web interface.'''
+    '''
+    Defines the logging tab in the web interface.
+
+    :returns: bokeh.models.Panel
+    '''
+
     info = Div(text="""<img src="drawing-robot/static/out_orig.png">""")
     tabRaspi = Panel(child = info, title = "Logging informations")
     return tabRaspi
 
 def get_random_char(y):
-    '''Gives back a number of random chars.'''
+    '''
+    Returns a number of random chars.
+
+    :param y: integer number of characters to be returned
+    :returns: y random characters
+    '''
+
     return ''.join(choice(string.ascii_letters) for x in range(y))
 
 def draw_line(image, arms, raspi):
-    '''This is the main drawing function which is draws the image in the
-    simulator and in the real world.'''
+    '''
+    Main drawing function for robot and simulator.
+
+    :param image: image dictionary
+    :param arms: arms dictionary
+    :param raspi: raspi dictionary
+    '''
+    
     # looking for the first pixel in image, sets image['foundNextPixel']:
     find_pixel(image)
     threadList=[] # delete the old thread list

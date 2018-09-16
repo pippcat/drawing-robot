@@ -15,7 +15,14 @@ from PIL import Image
 
 
 def open_image(filename):
-    '''Opens an image and returns it.'''
+    '''
+    Opens an image and returns it.
+
+    It also rotates it to landscape if it is a portrait image.
+
+    :param filename: file name
+    :returns: image
+    '''
 
     filepath = os.getcwd()+ '/drawing-robot/static/' + filename
     logging.info("Loading image " + filepath)
@@ -25,16 +32,13 @@ def open_image(filename):
     return im
 
 def detect_edges(imagename, algorithm):
-    '''Does edge detection by the choosen algorithm.
+    '''
+    Does edge detection by the choosen algorithm.
 
-    Valid algorithms:
-        - roberts
-        - scharr
-        - sobel
-        - prewitt
-        - canny-1
-        - canny-2
-        - canny-3'''
+    :param imagename: image name
+    :param algorithm: has to be "roberts", "scharr", "prewitt", "canny-1", "canny-2" or "canny3"
+    :returns: image
+    '''
 
     im = color.rgb2gray(imagename)  # image is colored, lets make it gray scale
     logging.info(algorithm + ' was choosen as edge detection algorithm.')
@@ -55,14 +59,26 @@ def detect_edges(imagename, algorithm):
     return edges
 
 def invert_images(imagename):
-    '''Inverts an image and returns it.'''
+    '''
+    Inverts an image and returns it.
+    :param imagename: image name
+    :returns: image
+    '''
 
     logging.info('Inverting image.')
     inv = 1 - np.asarray(imagename)
     return inv
 
 def resize_image(source, size):
-    '''Resizes an image to the given size and returns it.'''
+    '''
+    Resizes an image to the given size and returns it.
+
+    It also rotates portrait images to landscape images first.abs
+
+    :param source: image source
+    :param size: size to which long size should be set
+    :returns: image
+    '''
 
     # transform throws warnings which we'd like to supress, therefore:
     logging.info('Resizing image.')
@@ -83,7 +99,12 @@ def resize_image(source, size):
         return res
 
 def save_file(filename, data):
-    '''Saves result as filename.png in images subfolder.'''
+    '''
+    Saves result as filename.png in images subfolder.
+
+    :param filename: name of file in drawing-robot/static/ folder
+    :param data: image
+    '''
 
     logging.info('Saving file as ' + filename)
     if data.shape[0] > data.shape[1]: # rotate image if height > width
@@ -91,7 +112,13 @@ def save_file(filename, data):
     plt.imsave(os.getcwd()+ '/drawing-robot/static/' + filename, data, cmap = plt.cm.gray)
 
 def image_as_array(filename, threshold):
-    '''Stores image as binary array, threshold can be set.'''
+    '''
+    Stores image as binary array, threshold can be set.
+
+    :param filename: file name
+    :param threshold: threshold for conversion, has to be between 0 and 1
+    :returns: image as array
+    '''
 
     logging.info('Converting image to array')
     print(filename)
@@ -105,5 +132,5 @@ def image_as_array(filename, threshold):
             else:
                 imageAsArray[ix,iy] = 1
     if imageAsArray.shape[0] < imageAsArray.shape[1]: # rotate image if height > width
-        imageAsArray = np.rot90(imageAsArray)
+        imageAsArray = np.rot90(imageAsArray, k=3)
     return imageAsArray

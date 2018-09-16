@@ -8,7 +8,13 @@ import math
 import logging
 
 def get_angles(image, arms):
-    '''calculates the angles of the two servos'''
+    '''
+    Calculates the angles of the two servos.abs
+
+    :param image: image dictionary
+    :param arms: arms dictionary
+    '''
+
     try:
         r_2 = image['currentX']**2 + image['currentY']**2
         l_sq = arms['innerArmLength']**2 + arms['outerArmLength']**2
@@ -35,7 +41,14 @@ def get_angles(image, arms):
         return
 
 def write_pixel_to_dict(image, x, y):
-    '''Updates image dictionary after new pixel was found.'''
+    '''
+    Updates image dictionary after new pixel was found.
+
+    :param image: image dictionary
+    :param x: current x position in image['array']
+    :param y: current y position in image['array']
+    '''
+
     image['pixelCounter'] += 1
     image['array'][x,y] = 1
     image['foundNextPixel'] = True
@@ -45,7 +58,11 @@ def write_pixel_to_dict(image, x, y):
     image['currentY'] = image['currentYInArray']/image['scale']+image['originY']
 
 def find_pixel(image):
-    '''finds the first pixel of the next line'''
+    '''
+    Finds the first pixel of the next line
+
+    :param image: image dictionary
+    '''
     for ix in range(image['array'].shape[0]-1, 0, -1):
         for iy in range(image['array'].shape[1]-1, 0, -1):
             if image['array'][ix,iy] < 0.5:
@@ -56,7 +73,11 @@ def find_pixel(image):
     return
 
 def find_adjacent_pixel(image):
-    '''finds the next pixel in a line'''
+    '''
+    Finds the next pixel in a line.
+
+    :param image: image dictionary'''
+    
     ax=image['currentXInArray']
     for ay in range(image['currentYInArray']+1,image['currentYInArray']-2,-1):
         if image['array'][ax,ay] < 0.5:

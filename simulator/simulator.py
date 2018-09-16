@@ -17,10 +17,14 @@ from time import sleep
 
 
 def set_up_simulation(simulation, image, arms):
-    '''Sets up the simulation screen.'''
-    # check if we have an old figure to delete before;
+    '''
+    Sets up the simulation screen.
 
-
+    :param simulation: simulation dictionary
+    :param image: image dictionary
+    :param arms: arms dictionary
+    :returns: bokeh.models.Panel
+    '''
 
     logging.info('Intitializing drawing simulator')
     imageFrameX = ([image['originX'],
@@ -60,8 +64,15 @@ def set_up_simulation(simulation, image, arms):
     return tab
 
 def update_simulation_background(simulation, image):
-    '''Updates the simulation background image after modifying it.
-    it also removes the already drawn lines of the old images.'''
+    '''
+    Updates the simulation background image after modifying it.
+
+    it also removes the already drawn lines of the old images.
+
+    :param simulation: simulation dictionary
+    :param image: image dictionary
+    '''
+
     logging.info('Updating drawing simulator backgound image.')
     #remove old lines; how to do that better?:
     if image['lineCounter'] > 0:
@@ -84,7 +95,13 @@ def update_simulation_background(simulation, image):
     # h=image['height']/image['width']*image['height']
 
 def move_arms(arms, simulation):
-    '''Moves the robot arms in the simulation during the drawing process.'''
+    '''
+    Moves the robot arms in the simulation during the drawing process.
+
+    :param arms: arms dictionary
+    :param simulation: simulation dictionary
+    '''
+
     newInner = simulation['innerArmDataStream'].data
     newOuter = simulation['outerArmDataStream'].data
     newInner['a'] = [arms['innerArmAngleRad']]
@@ -95,7 +112,13 @@ def move_arms(arms, simulation):
     simulation['outerArmDataStream'].data = newOuter
 
 def draw_new_line(simulation, image):
-    '''Draws a new line in the simulator.'''
+    '''
+    Draws a new line in the simulator.
+
+    :param simulation: simulation dictionary
+    :param image: image dictionary
+    '''
+
     '''we have to initialize 2 points to still draw anthing if
     there is no adjacent pixel:'''
     ds = ColumnDataSource(dict(x=[image['currentX']+0.25,image['currentX']-0.25],
@@ -107,7 +130,13 @@ def draw_new_line(simulation, image):
     simulation['figure'].add_glyph(ds, newLine)
 
 def append_line(simulation, image):
-    '''Appends pixel to the current line in the simulator.'''
+    '''
+    Appends pixel to the current line in the simulator.
+
+    :param simulation: simulation dictionary
+    :param image: image dictionary
+    '''
+    
     newDS = simulation['lines'][-1].data
     newDS['x'].append(image['currentX'])
     newDS['y'].append(image['currentY'])
