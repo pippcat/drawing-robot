@@ -3,7 +3,7 @@
 
 This project uses an RaspberryPi 3, a PCA9685,  some servo motors and a pen to draw a picture like a human would do.
 
-The project uses [Bokeh](https://bokeh.pydata.org/en/latest/) and allows to upload and modify images in the webbrowser as well as simultaneously watch the drawing process in a simulator. Image upload from the controlling device is possible.
+[Bokeh](https://bokeh.pydata.org/en/latest/) is used to provide a web app which allows to upload and modify images in the webbrowser as well as simultaneously watch the drawing process in a simulator. Image upload from the controlling device is possible.
 
 ## Usage
 
