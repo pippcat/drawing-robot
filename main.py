@@ -49,13 +49,15 @@ from simulator.simulator import append_line
 # is needed for image import:
 file_source = ColumnDataSource({'file_contents':[], 'file_name':[]})
 
+# needed for periodic callbacks:
+callback_id = None
+
 # multithreading of simulator and robot:
 threadList = []
 
 ### reading variables from config file:
 config = configparser.ConfigParser()
 config.read('drawing-robot/config.ini')
-#config.read('config.ini')
 # general:
 debug = config['general'].getboolean('debug')
 originX = config['general'].getint('originX')
@@ -156,8 +158,6 @@ simulation = {'switchedOn':simulatorSwitchedOn,
               'lines':[],
               'figure': False}
 
-# needed for periodic callbacks:
-callback_id = None
 
 ### callback functions:
 def callback_modify_output_image():
