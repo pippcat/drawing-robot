@@ -43,8 +43,8 @@ def set_up_simulation(simulation, image, arms):
                         l=[arms['outerArmLength']], a=[0], n=["outerArm"],
                         c=["dodgerblue"], w=["6"]))
     sim = bp.figure(width=simulation['sizeX'], height=simulation['sizeY'],
-                    x_range=(-0.25*arms['armLength'],arms['armLength']),
-                    y_range=(0,1.25*arms['armLength']), name='simulatorPlot')
+                    x_range=(0,0.65*arms['armLength']),
+                    y_range=(0,0.65*arms['armLength']), name='simulatorPlot')
     # add a line for inner arm without data:
     innerArm = Ray(x="x", y="y", angle="a", length="l", name="n",
                    line_width="w", line_color="c")
@@ -136,7 +136,7 @@ def append_line(simulation, image):
     :param simulation: simulation dictionary
     :param image: image dictionary
     '''
-    
+
     newDS = simulation['lines'][-1].data
     newDS['x'].append(image['currentX'])
     newDS['y'].append(image['currentY'])
