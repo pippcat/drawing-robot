@@ -450,8 +450,70 @@ def tab_logging():
     '''
 
     info = Div(text="""<img src="drawing-robot/static/out_orig.png">""")
-    tabRaspi = Panel(child = info, title = "Logging informations")
+    tab = Panel(child = info, title = "Logging informations")
     return tabRaspi
+
+def tab_start():
+    '''
+    The welcome screen. It's in german, though.
+
+    :returns: bokeh.models.Panel
+    '''
+    css = ''
+    info = Div(text="""
+               <h1 align="center">Portraitroboter</h1>
+               <p align="center">Dieser Roboter kann ein Bild von dir aufnehmen und es dann malen.
+               Die Bedienung funktioniert über dieses Tablet.</br>
+               Mehr Informationen und den Quellcode findet ihr hier:</br>
+               <img align="middle" src="drawing-robot/static/doc/qr.png"></br>
+               <i>(https://www.github.com/pippcat/drawing-robot)</i></br>
+               </p>
+               <hr>
+               <h2 align="left">Kurzanleitung</h2>
+               <p align="left">Es gibt 3 Bereiche:</br>
+               <img align="middle" src="drawing-robot/static/doc/tabs.png"></br>
+               Du befindest dich gerade auf dem "Manual" Reiter. Hier kannst du
+               die Anleitung lesen. Der zweite Reiter heisst "Image". Du kannst
+               dort ein Bild hochladen und so verändern, dass es der Roboter
+               malen kann:</br>
+               <img align="middle" src="drawing-robot/static/doc/openFile.png"></br>
+               Drück auf "Choose File..", wähle die Kamera aus und mach ein Foto von dir.
+               estätige mit dem <img src="drawing-robot/static/doc/ok.png">.
+               Jetzt solltest du rechts einen Dateinamen sehen.
+               Manchmal klappt das nicht, dann versuch es noch einmal.</br>
+               In der Zeile darunter kannst du die Bildverarbeitungsparameter anpassen:</br>
+               <img align="middle" src="drawing-robot/static/doc/imageModifier.png"></br>
+               <b>Resoltion of output image</b> ist die Auflösung deines Bildes. 100 Pixel dauern
+               etwa 10 Minuten, doppelt so viele dauern vier Mal so lange.</br>
+               Der Roboter kennt nur weiß oder schwarz. Das Bild wird also erst in Graustufen
+               umgewandelt und dann in ein Schwarz-Weiß-Bild.</br>
+               enn weiß 0 ist und schwarz 1 gibt der
+               <b>Threshold to conversation to black & white</b> an, wo die Grenze zwischen schwarz und
+               weiß liegt.</br>
+               Die Liste daneben ist eine Auswahl verschiedener Kantenerkennungsmechanismen. Probier
+               einfach verschiede aus.</br>
+               <img src="drawing-robot/static/doc/applyChanges.png"></br>
+               Übernimmt die Änderungen und errechnet ein neues Bild. Das kann, je nach Auflösung, schon mal ein paar Sekunden
+               dauern. Dann siehst du in den darunter liegen den Feldern das Resultat, das Originalbild und
+               die notwendigen Zwischenschritte. Wenn du mit dem Ergebnis zufriedem bist, klicke auf den dritten
+               Reiter mit dem Namen <b>Simulator</b></p>
+               <p align="left">
+               <img align="middle" src="drawing-robot/static/doc/simulator.png"></br>
+               Hier siehst du dein Bild und einen Simulator, der die Vorlage gleichzeitig
+               mit eigentlichen Roboter malt.</br>
+               <img align="middle" src="drawing-robot/static/doc/start.png"></br>
+               Startet den Roboter. Wenn du ein schönes Bild möchtest, solltest du kurz nachsehen ob der Stift
+               nicht zu stark aufdrückt. Du kannst auf</br>
+               <img align="middle" src="drawing-robot/static/doc/stop.png"></br>
+               drücken, dann malt der Roboter die aktuelle Linie noch zu Ende und hält dann an.
+               </p>
+               <h2 align="left">Viel Spaß!</h2>
+               <p align="left"><i><small>Falls die App nicht mehr reagiert: Browserfenster neu laden! Wenn das nicht hilft,
+               Betreuung ansprechen!</small></i></p>
+
+               """)
+    tab = Panel(child = info, title = "Manual")
+    return tab
 
 def get_random_char(y):
     '''
@@ -757,7 +819,8 @@ tab1 = tab_image()
 tab3 = set_up_simulation(simulation, image, arms)
 #tab4 = tab_logging()
 #tab5 = tab_calibration()
-tabs = Tabs(tabs = [tab1, tab3], sizing_mode='scale_width')
+tab6 = tab_start()
+tabs = Tabs(tabs = [tab6, tab1, tab3], sizing_mode='scale_width')
 layout = column(children=[button, tabs], sizing_mode='scale_width',
                 name='mainLayout')
 curdoc().title = "Drawing Robot"
