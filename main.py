@@ -28,6 +28,7 @@ from bokeh.io import curdoc
 from bokeh.models import Panel, Button, Range1d, Plot
 from bokeh.models.widgets import Tabs, Div, TextInput, Select, Slider, PreText
 from bokeh.layouts import column, row, WidgetBox
+from bokeh.models.glyphs import Ray, Line, ImageURL
 
 # own stuff:
 from helper import get_angles
@@ -39,7 +40,7 @@ from imageProcessor.imageProcessor import invert_images
 from imageProcessor.imageProcessor import resize_image
 from imageProcessor.imageProcessor import save_file
 from imageProcessor.imageProcessor import image_as_array
-from simulator.simulator import set_up_simulation
+#from simulator.simulator import set_up_simulation
 from simulator.simulator import update_simulation_background
 from simulator.simulator import move_arms
 from simulator.simulator import draw_new_line
@@ -298,7 +299,7 @@ def callback_update_calibration():
 
 def callback_write_config():
     '''Writes values from web interface back to config file.'''
-    print('config will be written now!')
+    pass
 
 def callback_start():
     '''Starts/stops the drawing process.'''
@@ -463,8 +464,10 @@ def tab_start():
     info = Div(text="""
                <h1 align="center">Portraitroboter</h1>
                <p align="center">Dieser Roboter kann ein Bild von dir aufnehmen und es dann malen.
-               Die Bedienung funktioniert über dieses Tablet.</br>
-               Mehr Informationen und den Quellcode findet ihr hier:</br>
+               Die Bedienung funktioniert über dieses Tablet.</p>
+               <p align="center"><video align="center" width="320" height="240" autoplay controls>
+               <source src="drawing-robot/static/doc/fckafd.mp4" type="video/mp4"></video></p>
+               <p align="center">Mehr Informationen und den Quellcode findest du hier:</br>
                <img align="middle" src="drawing-robot/static/doc/qr.png"></br>
                <i>(https://www.github.com/pippcat/drawing-robot)</i></br>
                </p>
@@ -472,14 +475,14 @@ def tab_start():
                <h2 align="left">Kurzanleitung</h2>
                <p align="left">Es gibt 3 Bereiche:</br>
                <img align="middle" src="drawing-robot/static/doc/tabs.png"></br>
-               Du befindest dich gerade auf dem "Manual" Reiter. Hier kannst du
-               die Anleitung lesen. Der zweite Reiter heisst "Image". Du kannst
+               Du befindest dich gerade auf dem <b>Manual</b> Reiter. Hier kannst du
+               die Anleitung lesen. Der zweite Reiter heisst <b>Image</b>. Du kannst
                dort ein Bild hochladen und so verändern, dass es der Roboter
                malen kann:</br>
                <img align="middle" src="drawing-robot/static/doc/openFile.png"></br>
                Drück auf "Choose File..", wähle die Kamera aus und mach ein Foto von dir.
                estätige mit dem <img src="drawing-robot/static/doc/ok.png">.
-               Jetzt solltest du rechts einen Dateinamen sehen.
+               Jetzt siehst du rechts einen Dateinamen.
                Manchmal klappt das nicht, dann versuch es noch einmal.</br>
                In der Zeile darunter kannst du die Bildverarbeitungsparameter anpassen:</br>
                <img align="middle" src="drawing-robot/static/doc/imageModifier.png"></br>
@@ -599,6 +602,58 @@ def update():
     if raspi['switchedOn']:
         move_pen(arms, raspi, 'up')
 
+def set_up_simulation(simulation, image, arms):
+    '''
+    Sets up the simulation screen.
+
+    :param simulation: simulation dictionary
+    :param image: image dictionary
+    :param arms: arms dictionary
+    :returns: bokeh.models.Panel
+    '''
+    ### behaviour of start and reset button:
+    global button
+    button = Button(label='Start', button_type='success', width=simulation['sizeX'])
+    button.on_click(callback_start)
+
+    logging.info('Intitializing drawing simulator')
+    imageFrameX = ([image['originX'],
+                    image['originX']+image['width'],
+                    image['originX']+image['width'],
+                    image['originX'],
+                    image['originX']])
+    imageFrameY = ([image['originY'],
+                    image['originY'],
+                    image['originY']+image['height'],
+                    image['originY']+image['height'],
+                    image['originY']])
+    iads = ColumnDataSource(dict(x=[0], y=[0], l=[arms['innerArmLength']],
+                        a=[0], n=["innerArm"], c=["midnightblue"], w=["6"]))
+    oads = ColumnDataSource(dict(x=[arms['innerArmLength']], y=[0],
+                        l=[arms['outerArmLength']], a=[0], n=["outerArm"],
+                        c=["dodgerblue"], w=["6"]))
+    sim = bp.figure(width=simulation['sizeX'], height=simulation['sizeY'],
+                    x_range=(0,0.65*arms['armLength']),
+                    y_range=(0,0.65*arms['armLength']), name='simulatorPlot')
+    # add a line for inner arm without data:
+    innerArm = Ray(x="x", y="y", angle="a", length="l", name="n",
+                   line_width="w", line_color="c")
+    # add a line for outer arm without data
+    outerArm = Ray(x="x", y="y", angle="a", length="l", name="n",
+                   line_width="w", line_color="c")
+    sim.add_glyph(iads, innerArm)
+    sim.add_glyph(oads, innerArm)
+    sim.circle(0,0,line_color="deeppink",line_width=3,radius=arms['armLength'],
+               fill_color="deeppink",fill_alpha=0.1)
+    sim.line(imageFrameX, imageFrameY, line_width=3, color="deeppink")
+    simulation['backgroundImageDF'] = ColumnDataSource(dict(url = []))
+    tab = Panel(child = column(button,sim), title = "Simulator")
+    simulation['innerArmDataStream'] = iads
+    simulation['outerArmDataStream'] = oads
+    simulation['figure'] = sim
+    return tab
+
+
 ### populating image dictionary:
 # image['array'] = image_as_array('out_result.png', image['treshold'])
 image['scale'] = float(imageScaleFactor) * 100 / float(arms['armLength'])
@@ -607,9 +662,7 @@ image['height'] = 100/image['scale']
 image['currentXInArray'] = image['currentYInArray'] = False
 
 
-### behaviour of start and reset button:
-button = Button(label='Start', button_type='success')
-button.on_click(callback_start)
+
 
 
 ### UI elements
@@ -821,7 +874,7 @@ tab3 = set_up_simulation(simulation, image, arms)
 #tab5 = tab_calibration()
 tab6 = tab_start()
 tabs = Tabs(tabs = [tab6, tab1, tab3], sizing_mode='scale_width')
-layout = column(children=[button, tabs], sizing_mode='scale_width',
+layout = column(children=[tabs], sizing_mode='scale_width',
                 name='mainLayout')
 curdoc().title = "Drawing Robot"
 curdoc().add_root(layout)

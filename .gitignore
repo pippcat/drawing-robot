@@ -1,4 +1,4 @@
-/static/*
+/static/*.png
 !/static/.gitkeep
 *__pycache__*
 __pycache__/*
