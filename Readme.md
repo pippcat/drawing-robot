@@ -5,6 +5,8 @@ This project uses an RaspberryPi 3, a PCA9685,  some servo motors and a pen to d
 
 [Bokeh](https://bokeh.pydata.org/en/latest/) is used to provide a web app which allows to upload and modify images in the webbrowser as well as simultaneously watch the drawing process in a simulator. Image upload from the controlling device is possible.
 
+[![Watch the video](https://raw.githubusercontent.com/pippcat/drawing-robot/master/static/doc/fckafd.mp4)](http://youtu.be/vt5fpE0bzSY)
+
 ## Usage
 
 ### Startup
